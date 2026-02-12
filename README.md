@@ -16,6 +16,3 @@
    - DevOps: Dylan
    - AI Model: [Names]
    - Lambda/Data: [Names]
-
-   ## Getting Started
-   See `/docs/SETUP.md` for installation instructions.
