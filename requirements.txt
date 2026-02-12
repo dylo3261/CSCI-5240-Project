@@ -1,0 +1,12 @@
+# AWS SDK
+   boto3>=1.26.0
+
+# Data processing
+
+
+# Machine Learning
+
+# Testing
+
+
+# Linting
