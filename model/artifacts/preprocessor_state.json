@@ -1,0 +1,25 @@
+{
+  "numeric_medians": {
+    "elevation": 3484.0,
+    "slope": 17.84483459316563,
+    "aspect_degrees": 153.8600620224591,
+    "snow_depth": 99.93384731546558,
+    "new_snow_24h": 0.31516840645660826,
+    "swe": 24.51062362859742,
+    "temp": -9.039877862225216
+  },
+  "label_encoders": {
+    "Area": [
+      "Aspen",
+      "Front Range",
+      "Grand Mesa",
+      "Gunnison",
+      "Northern San Juan",
+      "Sangre de Cristo",
+      "Sawatch",
+      "Southern San Juan",
+      "Steamboat & Flat Tops",
+      "Vail & Summit County"
+    ]
+  }
+}
