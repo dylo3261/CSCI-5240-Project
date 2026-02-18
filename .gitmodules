@@ -1,0 +1,3 @@
+[submodule "avalanche-data"]
+	path = avalanche-data
+	url = https://github.com/kevinjmcmahon/avalanche-data.git
