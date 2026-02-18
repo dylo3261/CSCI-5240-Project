@@ -1,0 +1,17 @@
+
+🟢 **AVALANCHE RISK: LOW/SAFE (0%)**
+(Decision threshold: 0.50)
+
+**Factors INCREASING risk:**
+  🔺 Temp: 6.2 (warming temps - unstable snow) [+0.21]
+  🔺 Aspect Degrees: 19.8 [+0.03]
+  🔺 Elevation: 3608.0 [+0.01]
+
+**Factors DECREASING risk:**
+  🔻 Snow Depth: 0.0 [-0.03]
+  🔻 Slope: 35.4 [-0.01]
+  🔻 Swe: 0.0 [-0.01]
+
+**Recommendation:**
+  ✓ LOW DANGER. Normal caution advised.
+  99% below danger threshold.
