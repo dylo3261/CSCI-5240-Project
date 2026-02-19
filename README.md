@@ -15,4 +15,4 @@
    ## Team Responsibilities
    - DevOps: Dylan
    - AI Model: [Names]
-   - Lambda/Data: [Names]
+   - Lambda/Data: Eddie
