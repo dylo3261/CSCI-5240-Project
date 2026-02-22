@@ -42,3 +42,40 @@ python update_weather_data.py
 python update_caic_data.py --lambda
 python update_weather_data.py --lambda
 ```
+
+## Deployment
+
+```bash
+# Create deployment package
+cd /Users/eddiekiernan/Desktop/CSCI-5240-Project/lambda/cron-job
+
+# Create a clean build directory
+mkdir -p build
+pip install -r requirements.txt -t build/
+
+# Copy your code into the build directory
+cp lambda_function.py build/
+cp update_caic_data.py build/
+cp update_weather_data.py build/
+cp -r utils build/
+
+# DO NOT copy .env, data/, venv/, or __pycache__/
+
+# Strip unnecessary files and create the zip
+cd build
+
+find . -type d -name "tests" -exec rm -rf {} + 2>/dev/null
+find . -type d -name "test" -exec rm -rf {} + 2>/dev/null
+find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null
+find . -name "*.pyc" -delete 2>/dev/null
+find . -name "*.pyo" -delete 2>/dev/null
+find . -type d -name "*.dist-info" -exec rm -rf {} + 2>/dev/null
+find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null
+find . -name "*.md" ! -name "README.md" -delete 2>/dev/null
+find . -name "*.txt" ! -name "requirements.txt" -delete 2>/dev/null
+find . -name "*.rst" -delete 2>/dev/null
+
+zip -r9 ../deployment.zip .
+
+cd ..
+```

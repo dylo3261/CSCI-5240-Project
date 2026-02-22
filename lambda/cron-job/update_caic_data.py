@@ -18,6 +18,7 @@ API_BASE = "https://api.avalanche.state.co.us/api/v2/observation_reports"
 PER_PAGE = 250
 CHUNK_DAYS = 30
 EARLIEST_DATE = "2016-01-01"
+MAX_RETRIES = 3
 
 
 def clean_text(text):
@@ -118,14 +119,20 @@ def _fetch_new_reports(start: datetime) -> list[dict]:
     while cur < today:
         end = min(cur + timedelta(days=CHUNK_DAYS - 1), today)
         logger.info(f"  {cur.date()} → {end.date()}")
-        try:
-            rows = fetch_window(cur, end)
-            new_rows.extend(rows)
-            logger.info(f"    {len(rows)} reports")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"  Error: {e} — retrying in 10s")
-            time.sleep(10)
-            continue
+        retries = 0
+        while retries < MAX_RETRIES:
+            try:
+                rows = fetch_window(cur, end)
+                new_rows.extend(rows)
+                logger.info(f"    {len(rows)} reports")
+                break
+            except requests.exceptions.RequestException as e:
+                retries += 1
+                if retries >= MAX_RETRIES:
+                    logger.error(f"  Failed after {MAX_RETRIES} retries for {cur.date()}→{end.date()}: {e} — skipping window")
+                else:
+                    logger.warning(f"  Error (attempt {retries}/{MAX_RETRIES}): {e} — retrying in 10s")
+                    time.sleep(10)
         cur = end + timedelta(days=1)
         time.sleep(1)
     logger.info(f"Fetched {len(new_rows)} new reports total.")
@@ -183,7 +190,7 @@ def fetch_all():
     if not new_rows and not existing.empty:
         print("Data is already up-to-date.")
         return len(existing)
-    combined = _merge_and_save(existing, new_rows)
+    combined = _merge_and_save(existing, new_rows, upload=False)
     print(f"Saved {len(combined)} cleaned rows to {CLEAN_FILE}")
     return len(combined)
 

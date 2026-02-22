@@ -19,9 +19,8 @@ S3_DAILY_STATION_KEY = "daily_station_data.csv"
 S3_STATIONS_KEY = "snotel_stations_const.csv"
 S3_TERRAIN_KEY = "terrain_const.csv"
 
-# Lambda environment detection
-IS_LAMBDA = bool(os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
-
+# Lambda environment detection (AWS_EXECUTION_ENV is set by the Lambda runtime)
+IS_LAMBDA = os.environ.get("AWS_EXECUTION_ENV", "").startswith("AWS_Lambda")
 
 def download_from_s3(s3_key: str, local_path: str) -> bool:
     """
