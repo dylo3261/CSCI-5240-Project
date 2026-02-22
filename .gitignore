@@ -208,40 +208,43 @@ __marimo__/
 
 
 # Python
-   __pycache__/
-   *.py[cod]
-   *$py.class
-   *.so
-   .Python
-   env/
-   venv/
-   .venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
 
-   # AWS
-   .aws/
-   *.pem
+# AWS
+.aws/
+*.pem
 
-   # Data
-   *.csv
-   *.json
-   data/raw/*
-   data/processed/*
-   !data/raw/.gitkeep
-   !data/processed/.gitkeep
+# Data
+*.csv
+*.json
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
 
-   # Model files
-   *.h5
-   *.pkl
-   *.joblib
-   models/
+# Model files
+*.h5
+*.pkl
+*.joblib
+models/
 
-   # IDE
-   .vscode/
-   .idea/
-   *.swp
-   *.swo
-   .DS_Store
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
 
-   # Environment
-   .env
-   .env.local
+# Environment
+.env
+.env.local
+
+# Lambda
+lambda/cron-job/data/

@@ -1,6 +1,6 @@
 boto3
 pandas
-playwright
+numpy
 requests
-pandas
-json
+metloom
+python-dotenv

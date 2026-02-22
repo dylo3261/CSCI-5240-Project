@@ -1,16 +1,44 @@
-# Scrape CAIC (fetch_caic_api.py)
-Uses the CAIC API to get, process, and update S3 CSV. Ideally we use this as the primary method for scraping and updating data, but since this leverages an undocumented API, it may be unstable.
+# Cron Job — Daily Avalanche & Weather Data Pipeline
 
-Reference to CAIC API only occurs in 1.1.0 release notes: https://avalanche.state.co.us/release-notes.
+Runs daily via **EventBridge → Lambda**.
 
-Ideal usage:
-Run script daily (via cron job) to update processed data (which already exists as CSV in S3) from yesterdays reports:
+## Pipeline Flow
+
+1. **EventBridge** triggers the Lambda daily
+2. **CAIC update** (`python update_caic_data.py --lambda`)
+   - Downloads `caic_clean_cache.csv` from S3
+   - Determines the latest date in the existing clean data
+   - Fetches new observation reports from the CAIC API since that date
+   - Cleans new data via `utils/process_caic.load_caic_data()`
+   - Merges with existing clean data, deduplicates, and sorts
+   - Uploads updated `caic_clean_cache.csv` to S3
+3. **Weather update** (`python update_weather_data.py --lambda`)
+   - Downloads `daily_station_data.csv` and `snotel_stations_const.csv` from S3
+   - For each station in `snotel_stations_const.csv`, fetches `snow_depth`, `swe`, and `temp`
+   - Computes `new_snow_24hr` as today's `snow_depth` minus yesterday's stored value
+   - On first run (no existing data), fetches both today and yesterday to bootstrap
+   - On subsequent runs, only fetches today and uses yesterday's data from the CSV
+   - Merges, deduplicates, and uploads `daily_station_data.csv` to S3
+
+## S3 Bucket: `daily-weather-data-csv-bucket`
+
+| S3 Key | Type | Description |
+|--------|------|-------------|
+| `caic_clean_cache.csv` | Cache (daily) | Cleaned & filtered CAIC avalanche observations starting in 2016 (updated daily by Lambda) |
+| `daily_station_data.csv` | Cache (daily) | Daily SNOTEL station weather (snow_depth, swe, temp, new_snow_24hr) (updated daily by Lambda) |
+| `snotel_stations_const.csv` | Constant | Colorado SNOTEL station metadata (not updated daily, but stored in S3) |
+| `terrain_const.csv` | Constant | Terrain features for avalanche locations (not updated daily, but stored in S3) |
+
+## Local Usage
+
 ```bash
-python fetch_caic_api.py --lambda
+# Full historical CAIC fetch + clean (resumes from existing clean file)
+python update_caic_data.py
+
+# Local weather station fetch (fetches today's data, bootstraps if first run)
+python update_weather_data.py
+
+# Simulate Lambda daily update locally (requires AWS credentials in .env file)
+python update_caic_data.py --lambda
+python update_weather_data.py --lambda
 ```
-
-1. Cron job 6AM w/ Event Bridge trigger calls Lambda
-2. Lambda calls CAIC API and gets, processes, and updates S3 CSV
-3. Same Lambda gets weather data from API and updates S3 CSV
-
-# 
