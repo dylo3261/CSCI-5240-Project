@@ -45,25 +45,36 @@ python update_weather_data.py --lambda
 
 ## Deployment
 
+> **Important:** Dependencies must be installed for **Linux x86_64** (the Lambda
+> execution environment). The `--platform` flag tells pip to download
+> Linux wheels. The Lambda runtime must be set to **Python 3.13** in the AWS console.
+
 ```bash
-# Create deployment package
 cd /Users/eddiekiernan/Desktop/CSCI-5240-Project/lambda/cron-job
 
-# Create a clean build directory
-mkdir -p build
-pip install -r requirements.txt -t build/
+# 1. Clean previous build
+rm -rf build && mkdir build
 
-# Copy your code into the build directory
-cp lambda_function.py build/
-cp update_caic_data.py build/
-cp update_weather_data.py build/
+# 2. Install Linux x86_64 dependencies (runs on macOS, downloads Linux wheels)
+pip install \
+  --platform manylinux2014_x86_64 \
+  --implementation cp \
+  --python-version 3.13 \
+  --only-binary=:all: \
+  -r requirements.txt \
+  -t build/
+
+# 3. Copy source code into build
+cp lambda_function.py update_caic_data.py update_weather_data.py build/
 cp -r utils build/
 
-# DO NOT copy .env, data/, venv/, or __pycache__/
-
-# Strip unnecessary files and create the zip
+# 4. Trim the build
 cd build
 
+# Remove packages already provided by Lambda runtime
+rm -rf boto3* botocore* s3transfer* jmespath*
+
+# Strip test dirs, metadata, and docs
 find . -type d -name "tests" -exec rm -rf {} + 2>/dev/null
 find . -type d -name "test" -exec rm -rf {} + 2>/dev/null
 find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null
@@ -71,11 +82,15 @@ find . -name "*.pyc" -delete 2>/dev/null
 find . -name "*.pyo" -delete 2>/dev/null
 find . -type d -name "*.dist-info" -exec rm -rf {} + 2>/dev/null
 find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null
-find . -name "*.md" ! -name "README.md" -delete 2>/dev/null
-find . -name "*.txt" ! -name "requirements.txt" -delete 2>/dev/null
+find . -name "*.md" -delete 2>/dev/null
+find . -name "*.txt" -delete 2>/dev/null
 find . -name "*.rst" -delete 2>/dev/null
 
-zip -r9 ../deployment.zip .
+# Check size of /build
+du -sh .
 
+# 5. Create deployment zip
+zip -r9 ../deployment.zip .
 cd ..
+ls -lh deployment.zip
 ```
