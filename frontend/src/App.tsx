@@ -1,4 +1,9 @@
-import './App.css'
+import './App.css';
+import { Amplify } from 'aws-amplify';
+import { awsConfig } from './aws-config';
+import '@aws-amplify/ui-react/styles.css';
+
+Amplify.configure(awsConfig);
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import { AppBar, Toolbar, Typography, Box, Avatar, IconButton, Tooltip } from "@mui/material";
 import MapIcon from "@mui/icons-material/Map";
