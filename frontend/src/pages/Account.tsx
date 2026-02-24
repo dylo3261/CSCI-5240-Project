@@ -1,91 +1,126 @@
-import { useEffect, useState } from "react";
-import { Box, Typography, Avatar, Divider, Button } from "@mui/material";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { Box, Typography, Avatar, Divider, Button, Paper } from "@mui/material";
 import { Authenticator } from "@aws-amplify/ui-react";
-import { fetchUserAttributes, type FetchUserAttributesOutput } from "aws-amplify/auth";
+import { fetchUserAttributes, type FetchUserAttributesOutput, type AuthUser } from "aws-amplify/auth";
+import type { UseAuthenticator } from "@aws-amplify/ui-react-core";
+import "./Account.css";
+
+// Strict typing for the sub-component props to satisfy linters
+interface AccountDetailsProps {
+  user?: AuthUser;
+  signOut?: UseAuthenticator["signOut"];
+  attributes: FetchUserAttributesOutput | null;
+  setAttributes: Dispatch<SetStateAction<FetchUserAttributesOutput | null>>;
+}
+
+// Custom header injected into the Amplify Authenticator
+const components = {
+  Header() {
+    return (
+      <Box className="auth-custom-header">
+        <Typography variant="h5" component="h1" className="auth-title">
+          Avalanche Predictor
+        </Typography>
+        <Typography variant="caption" component="p" className="auth-subtitle">
+          Backcountry Safety & Intelligence
+        </Typography>
+      </Box>
+    );
+  },
+};
 
 export default function Account() {
-  // Store the full attributes object to access email, name, etc.
   const [attributes, setAttributes] = useState<FetchUserAttributesOutput | null>(null);
 
   return (
-    <Authenticator
-      signUpAttributes={["name"]}
-      formFields={{
-        signUp: {
-          name: {
-            label: "Full Name",
-            placeholder: "Enter your full name",
-            order: 1,
-            isRequired: true,
+    <Box className="account-page-wrapper">
+      <Authenticator
+        loginMechanisms={["email"]}
+        components={components}
+        signUpAttributes={["name"]}
+        formFields={{
+          signUp: {
+            name: {
+              label: "Full Name",
+              placeholder: "Enter your full name",
+              order: 1,
+              isRequired: true,
+            },
           },
-        },
-      }}
-    >
-      {({ signOut, user }) => {
-        // This inner component handles fetching once authenticated
-        return (
-          <AccountDetails 
-            user={user} 
-            signOut={signOut} 
-            attributes={attributes} 
-            setAttributes={setAttributes} 
+        }}
+      >
+        {({ signOut, user }) => (
+          <AccountDetails
+            user={user}
+            signOut={signOut}
+            attributes={attributes}
+            setAttributes={setAttributes}
           />
-        );
-      }}
-    </Authenticator>
+        )}
+      </Authenticator>
+    </Box>
   );
 }
 
-// Sub-component to handle the "Logged In" state logic
-function AccountDetails({ user, signOut, attributes, setAttributes }: any) {
+// Sub-component handling the authenticated state
+function AccountDetails({ user, signOut, attributes, setAttributes }: AccountDetailsProps) {
   useEffect(() => {
     async function loadAttributes() {
       try {
         const attrs = await fetchUserAttributes();
         setAttributes(attrs);
       } catch (err) {
-        console.error("Error fetching attributes", err);
+        console.error("Error fetching user attributes:", err);
       }
     }
-    // Only fetch if we don't have them yet
+    
     if (!attributes) {
       loadAttributes();
     }
   }, [attributes, setAttributes]);
 
+  // Safely grab the first letter of the name for the avatar fallback
+  const initial = attributes?.name ? attributes.name.charAt(0).toUpperCase() : "U";
+
   return (
-    <Box sx={{ p: 4, maxWidth: 600, margin: "0 auto" }}>
-      <Typography variant="h5" fontWeight={700} mb={3}>
-        Account
+    <Paper elevation={3} className="profile-card">
+      <Typography variant="h6" component="h2" className="profile-heading">
+        Your Profile
       </Typography>
-      
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
-        {/* You can use the first letter of their name as a fallback for the Avatar */}
-        <Avatar sx={{ width: 64, height: 64, bgcolor: 'primary.main' }}>
-          {attributes?.name?.charAt(0) || "U"}
+
+      <Box className="profile-info-container">
+        <Avatar className="profile-avatar">
+          {initial}
         </Avatar>
-        <Box>
-          <Typography fontWeight={600} variant="h6">
-            {attributes?.name || "Loading name..."}
+        <Box className="profile-details">
+          <Typography variant="subtitle1" component="h3" className="profile-name">
+            {attributes?.name || "Loading..."}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" className="profile-email">
             {attributes?.email || user?.signInDetails?.loginId}
           </Typography>
         </Box>
       </Box>
 
-      <Divider sx={{ mb: 3 }} />
+      <Divider className="profile-divider" />
 
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="subtitle2" color="text.secondary">User ID</Typography>
-        <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
+      <Box className="profile-meta">
+        <Typography variant="caption" component="p" className="meta-label">
+          System User ID
+        </Typography>
+        <Typography variant="body2" component="p" className="meta-value">
           {user?.userId}
         </Typography>
       </Box>
 
-      <Button variant="contained" color="error" onClick={signOut}>
-        Sign Out
+      <Button 
+        variant="outlined" 
+        fullWidth 
+        className="btn-signout" 
+        onClick={signOut}
+      >
+        Secure Sign Out
       </Button>
-    </Box>
+    </Paper>
   );
 }

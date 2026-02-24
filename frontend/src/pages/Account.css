@@ -1,0 +1,158 @@
+/* --- Global Page Wrapper --- */
+.account-page-wrapper {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Cool, snowy background gradient */
+    background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
+    padding: 1rem;
+}
+
+/* --- Amplify UI Authenticator Overrides --- */
+[data-amplify-authenticator] {
+    --amplify-colors-background-primary: #ffffff;
+    --amplify-colors-brand-primary-10: #e0f2fe;
+    /* Very light ice blue */
+    --amplify-colors-brand-primary-80: #0ea5e9;
+    /* Professional Ice Blue */
+    --amplify-colors-brand-primary-90: #0284c7;
+    /* Darker blue for hover states */
+    --amplify-colors-brand-primary-100: #0369a1;
+
+    --amplify-colors-font-interactive: #0f172a;
+    /* Deep slate for text */
+    --amplify-components-button-border-radius: 6px;
+    --amplify-components-fieldcontrol-border-radius: 6px;
+
+    --amplify-components-tabs-item-active-border-color: var(--amplify-colors-brand-primary-80);
+    --amplify-components-tabs-item-active-color: var(--amplify-colors-brand-primary-80);
+
+    box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* --- Custom Header for Authenticator --- */
+.auth-custom-header {
+    text-align: center;
+    padding: 2rem 1.5rem 1rem;
+    background-color: #0f172a;
+    /* Deep Alpine Slate */
+}
+
+.auth-title {
+    font-weight: 800 !important;
+    letter-spacing: -0.025em !important;
+    color: #f8fafc !important;
+    margin: 0 !important;
+}
+
+.auth-subtitle {
+    color: #94a3b8 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em !important;
+    margin-top: 0.5rem !important;
+    display: block !important;
+}
+
+/* --- Logged-In Profile Card (MUI Paper) --- */
+.profile-card {
+    padding: 2.5rem !important;
+    border-radius: 12px !important;
+    width: 100%;
+    max-width: 450px;
+    margin: 0 auto;
+}
+
+.profile-heading {
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    margin-bottom: 1.5rem !important;
+}
+
+.profile-info-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* --- MUI Avatar Override --- */
+.profile-avatar {
+    width: 60px !important;
+    height: 60px !important;
+    background-color: #0ea5e9 !important;
+    /* Ice Blue */
+    color: #ffffff !important;
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.3);
+}
+
+.profile-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.profile-name {
+    font-weight: 600 !important;
+    color: #0f172a !important;
+    line-height: 1.2 !important;
+}
+
+.profile-email {
+    color: #64748b !important;
+    margin-top: 0.25rem !important;
+}
+
+/* --- MUI Divider Override --- */
+.profile-divider {
+    border-color: #e2e8f0 !important;
+    margin-bottom: 1.5rem !important;
+}
+
+/* --- Meta Info --- */
+.profile-meta {
+    margin-bottom: 2rem;
+}
+
+.meta-label {
+    font-weight: 600 !important;
+    color: #94a3b8 !important;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem !important;
+    display: block !important;
+}
+
+.meta-value {
+    color: #475569 !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+    background-color: #f8fafc;
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #e2e8f0;
+    word-break: break-all;
+}
+
+/* --- MUI Button Override --- */
+.btn-signout {
+    color: #dc2626 !important;
+    /* High-vis safety red */
+    border-color: #dc2626 !important;
+    border-width: 1px !important;
+    font-weight: 600 !important;
+    padding: 0.75rem 1rem !important;
+    text-transform: none !important;
+    /* Removes default MUI uppercase */
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-signout:hover {
+    background-color: #fef2f2 !important;
+    border-color: #dc2626 !important;
+}
+
+.btn-signout:active {
+    background-color: #fee2e2 !important;
+}
