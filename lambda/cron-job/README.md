@@ -44,10 +44,18 @@ python update_weather_data.py --lambda
 ```
 
 ## Deployment
+Amazon ECR container using docker to deploy the function
 
-> **Important:** Dependencies must be installed for **Linux x86_64** (the Lambda
-> execution environment). The `--platform` flag tells pip to download
-> Linux wheels. The Lambda runtime must be set to **Python 3.13** in the AWS console.
+**STEP 1: LOGIN**
+aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 029953330549.dkr.ecr.us-west-2.amazonaws.com
+
+**STEP 2: PUSH CHANGES TO AMAZON ECR**
+docker build --platform linux/amd64 -t cron-lambda . && \
+docker tag cron-lambda:latest 029953330549.dkr.ecr.us-west-2.amazonaws.com/cron-lambda:latest && \
+docker push 029953330549.dkr.ecr.us-west-2.amazonaws.com/cron-lambda:latest
+
+**STEP 3: REDEPLOY IN LAMBDA**
+Lambda Console > daily-data-scraper > Image tab > deploy new image> browse images > select latest > save
 
 ```bash
 cd /Users/eddiekiernan/Desktop/CSCI-5240-Project/lambda/cron-job
