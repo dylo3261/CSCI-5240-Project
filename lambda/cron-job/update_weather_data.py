@@ -57,7 +57,7 @@ def _build_rows_for_date(stations_df: pd.DataFrame, date: datetime,
         data = fetch_station_day(triplet, date)
 
         # Calculate new_snow_24hr
-        new_snow = None
+        new_snow = 0.0
         if yesterday_depths is not None and sid in yesterday_depths:
             prev = yesterday_depths[sid]
             curr = data["snow_depth"]
@@ -69,6 +69,8 @@ def _build_rows_for_date(stations_df: pd.DataFrame, date: datetime,
             "station_id": sid,
             "station_triplet": triplet,
             "station_name": name,
+            "latitude": station["latitude"],
+            "longitude": station["longitude"],
             "snow_depth": data["snow_depth"],
             "swe": data["swe"],
             "temp": data["temp"],
@@ -110,6 +112,9 @@ def _merge_and_save(existing_df: pd.DataFrame, new_rows: list[dict],
         combined = new_df
 
     combined.drop_duplicates(subset=["date", "station_id"], keep="last", inplace=True)
+    combined.dropna(subset=["snow_depth", "swe", "temp"], inplace=True)
+    float_cols = combined.select_dtypes(include="number").columns
+    combined[float_cols] = combined[float_cols].round(3)
     combined.sort_values(["date", "station_id"], ascending=[False, True], inplace=True)
     combined.reset_index(drop=True, inplace=True)
 
