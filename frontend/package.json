@@ -10,10 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aws-amplify/ui-react": "^6.15.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.8",
     "@mui/material": "^7.3.8",
+    "aws-amplify": "^6.16.2",
     "@types/papaparse": "^5.5.2",
     "leaflet": "^1.9.4",
     "papaparse": "^5.5.3",
