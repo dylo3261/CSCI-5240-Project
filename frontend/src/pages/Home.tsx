@@ -1,7 +1,6 @@
 import { Box, Typography, Chip, Button, Card, CardActionArea, CardContent } from "@mui/material";
 import MapIcon from "@mui/icons-material/Map";
 import { useNavigate } from "react-router-dom";
-import MapComponent from "../components/MapComponent";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -71,7 +70,7 @@ export default function Home() {
           <CardActionArea onClick={() => navigate("/map")}>
 
             <Box sx={{ height: { xs: 280, md: 460 }, pointerEvents: "none" }}>
-              <MapComponent />
+              <img src="/map-placeholder.png" style={{ height: "100%", width: "100%", objectFit: "cover", borderRadius: 12 }} />
             </Box>
 
             <CardContent sx={{
