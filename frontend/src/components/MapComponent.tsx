@@ -57,7 +57,7 @@ export default function MapComponent({ coords }: Props) {
       style={{ height: "100%", width: "100%" }}
     >
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         attribution='© <a href="https://carto.com/">CARTO</a>'
       />
       <FlyTo coords={coords} />
