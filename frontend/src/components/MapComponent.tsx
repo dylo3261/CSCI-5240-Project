@@ -11,7 +11,7 @@ const canvasRenderer = L.canvas({ padding: 0.5 });
 
 const getColor = (v: number) => `hsl(${(1 - v) * 240}, 90%, 50%)`;
 
-export type ReactionType = "icy" | "powder" | "bluebird" | "crowded" | "heavy_snow" | "foggy" | "sketchy";
+export type ReactionType = "icy" | "powder" | "bluebird" | "crowded" | "heavy_snow" | "foggy" | "sketchy" | "avalanche";
 
 export interface ReactionMarker {
   reactionId: string;
@@ -32,6 +32,7 @@ const REACTION_EMOJI: Record<ReactionType, string> = {
   heavy_snow: "🌨️",
   foggy: "🌫️",
   sketchy: "⚠️",
+  avalanche: "🏔️",
 };
 
 const REACTION_LABEL: Record<ReactionType, string> = {
@@ -42,6 +43,7 @@ const REACTION_LABEL: Record<ReactionType, string> = {
   heavy_snow: "Heavy Snow",
   foggy: "Foggy",
   sketchy: "Sketchy",
+  avalanche: "Avalanche",
 };
 
 function formatTimestamp(iso: string): string {
@@ -71,6 +73,7 @@ const reactionIcons: Record<ReactionType, L.DivIcon> = {
   heavy_snow: makeIcon("heavy_snow"),
   foggy: makeIcon("foggy"),
   sketchy: makeIcon("sketchy"),
+  avalanche: makeIcon("avalanche"),
 };
 
 const pendingLocationIcon = L.divIcon({
@@ -170,7 +173,7 @@ export default function MapComponent({ coords, reactions, pendingLocation, onLoc
           icon={pendingLocationIcon}
         />
       )}
-      {reactions.map(r => (
+      {reactions.filter(r => reactionIcons[r.reactionType]).map(r => (
         <Marker
           key={r.reactionId}
           position={[r.latitude, r.longitude]}

@@ -1,13 +1,27 @@
 import { useState } from "react";
-import { Button, TextField, Divider, Box, Typography } from "@mui/material";
+import { 
+  Button, 
+  TextField, 
+  Divider, 
+  Box, 
+  Typography, 
+  Paper, 
+  Collapse 
+} from "@mui/material";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
-import Paper from "@mui/material/Paper";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import type { ReactionType } from "./MapComponent";
 
 const REACTIONS: { type: ReactionType; emoji: string; label: string }[] = [
-  { type: "icy",              emoji: "❄️", label: "Icy"      },
-  { type: "good_snow",        emoji: "✨", label: "Good Snow" },
-  { type: "avalanche_danger", emoji: "⚠️", label: "Danger"   },
+  { type: "icy",        emoji: "❄️", label: "Icy"        },
+  { type: "powder",     emoji: "⛷️", label: "Powder"     },
+  { type: "bluebird",   emoji: "☀️", label: "Bluebird"   },
+  { type: "crowded",    emoji: "👥", label: "Crowded"    },
+  { type: "heavy_snow", emoji: "🌨️", label: "Heavy Snow" },
+  { type: "foggy",      emoji: "🌫️", label: "Foggy"      },
+  { type: "sketchy",    emoji: "⚠️", label: "Sketchy"    },
+  { type: "avalanche",  emoji: "🏔️", label: "Avalanche"  },
 ];
 
 interface SidebarProps {
@@ -22,6 +36,7 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation, isLog
   const [lng, setLng] = useState("");
   const [selectedType, setSelectedType] = useState<ReactionType | null>(null);
   const [message, setMessage] = useState("");
+  const [showManualEntry, setShowManualEntry] = useState(false);
 
   const handleSubmit = async () => {
     onSubmit({ lat: parseFloat(lat), lng: parseFloat(lng) });
@@ -68,7 +83,7 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation, isLog
 
   return (
     <Paper elevation={4} sx={{
-      width: 250,
+      width: 280, // Slightly widened to accommodate grid layout better
       flexShrink: 0,
       bgcolor: "#0a1628",
       border: "1px solid rgba(255,255,255,0.08)",
@@ -76,80 +91,18 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation, isLog
       p: 2.5,
       display: "flex",
       flexDirection: "column",
-      gap: 2,
+      gap: 2.5,
       mt: "40px",
       overflowY: "auto",
     }}>
 
-      {/* ── Location Search ── */}
+      {/* ── Drop a Reaction (Now the primary focus) ── */}
       <Box>
-        <Typography variant="h6" fontWeight={700} color="#fff">
-          Location Search
+        <Typography variant="h6" fontWeight={700} color="#fff" mb={0.5}>
+          Current Conditions
         </Typography>
-      </Box>
-
-      <Divider sx={{ borderColor: "rgba(255,255,255,0.08)" }} />
-
-      <TextField
-        label="Latitude"
-        placeholder="e.g. 39.7392"
-        value={lat}
-        onChange={e => setLat(e.target.value)}
-        size="small"
-        fullWidth
-        sx={inputSx}
-      />
-
-      <TextField
-        label="Longitude"
-        placeholder="e.g. -104.9903"
-        value={lng}
-        onChange={e => setLng(e.target.value)}
-        size="small"
-        fullWidth
-        sx={inputSx}
-      />
-
-      <Button
-        variant="outlined"
-        startIcon={<MyLocationIcon />}
-        fullWidth
-        onClick={handleSubmit}
-        sx={{
-          textTransform: "none",
-          fontWeight: 600,
-          color: "rgba(255,255,255,0.6)",
-          borderColor: "rgba(255,255,255,0.15)",
-          borderRadius: 2,
-          "&:hover": {
-            borderColor: "rgba(255,255,255,0.4)",
-            color: "#fff",
-            bgcolor: "rgba(255,255,255,0.05)",
-          },
-        }}
-      >
-        Search
-      </Button>
-
-      <Divider sx={{ borderColor: "rgba(255,255,255,0.08)" }} />
-
-      <Box sx={{ bgcolor: "rgba(255,255,255,0.04)", borderRadius: 2, p: 1.5 }}>
-        <Typography variant="caption" color="rgba(255,255,255,0.3)"
-          display="block" mb={0.5}>
-          Current Input
-        </Typography>
-        <Typography variant="caption" color="rgba(255,255,255,0.6)" fontFamily="monospace">
-          {lat && lng ? `${lat}, ${lng}` : "Nothing entered"}
-        </Typography>
-      </Box>
-
-      <Divider sx={{ borderColor: "rgba(255,255,255,0.08)" }} />
-
-      {/* ── Drop a Reaction ── */}
-      <Box>
-        <Typography variant="caption" fontWeight={600} color="rgba(255,255,255,0.45)"
-          display="block" mb={1.5} textTransform="uppercase" letterSpacing={0.5} fontSize={10}>
-          Drop a Reaction
+        <Typography variant="body2" color="rgba(255,255,255,0.6)" mb={2}>
+          Click the map to select a location, then drop a reaction below.
         </Typography>
 
         {!isLoggedIn ? (
@@ -157,46 +110,64 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation, isLog
             bgcolor: "rgba(255,255,255,0.03)",
             border: "1px solid rgba(255,255,255,0.06)",
             borderRadius: 2,
-            p: 1.5,
+            p: 2,
             textAlign: "center",
           }}>
-            <Typography variant="caption" color="rgba(255,255,255,0.25)" fontSize={11}>
+            <Typography variant="body2" color="rgba(255,255,255,0.5)">
               Sign in to post reactions
             </Typography>
           </Box>
         ) : (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
 
-            {/* Emoji type selector */}
-            <Box sx={{ display: "flex", gap: 1 }}>
+            {/* Pinned location indicator - moved up for logical flow */}
+            <Box sx={{ bgcolor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 2, p: 1.5 }}>
+              <Typography variant="caption" color="rgba(255,255,255,0.4)" display="block" mb={0.5} textTransform="uppercase" letterSpacing={0.5} fontSize={10}>
+                Selected Location
+              </Typography>
+              {pendingLocation ? (
+                <Typography variant="body2" color="#fff" fontFamily="monospace" fontWeight={500}>
+                  {pendingLocation.lat.toFixed(4)}, {pendingLocation.lng.toFixed(4)}
+                </Typography>
+              ) : (
+                <Typography variant="body2" color="rgba(255,255,255,0.4)" fontStyle="italic">
+                  No location selected
+                </Typography>
+              )}
+            </Box>
+
+            {/* Emoji type selector using CSS Grid */}
+            <Box sx={{ 
+              display: "grid", 
+              gridTemplateColumns: "1fr 1fr", 
+              gap: 1.25 
+            }}>
               {REACTIONS.map(({ type, emoji, label }) => (
                 <Button
                   key={type}
                   variant="outlined"
                   onClick={() => setSelectedType(prev => prev === type ? null : type)}
                   sx={{
-                    flex: 1,
                     flexDirection: "column",
                     textTransform: "none",
-                    fontSize: 10,
-                    px: 0.5,
-                    py: 0.75,
-                    minWidth: 0,
-                    lineHeight: 1.4,
-                    gap: 0.25,
+                    fontSize: 12,
+                    p: 1.5,
+                    lineHeight: 1.2,
+                    gap: 0.5,
                     borderRadius: 2,
                     borderColor: selectedType === type
-                      ? "rgba(255,255,255,0.6)"
+                      ? "rgba(255,255,255,0.8)"
                       : "rgba(255,255,255,0.12)",
-                    color: selectedType === type ? "#fff" : "rgba(255,255,255,0.5)",
-                    bgcolor: selectedType === type ? "rgba(255,255,255,0.08)" : "transparent",
+                    color: selectedType === type ? "#fff" : "rgba(255,255,255,0.6)",
+                    bgcolor: selectedType === type ? "rgba(255,255,255,0.1)" : "transparent",
+                    transition: "all 0.2s ease-in-out",
                     "&:hover": {
-                      borderColor: "rgba(255,255,255,0.4)",
+                      borderColor: "rgba(255,255,255,0.5)",
                       bgcolor: "rgba(255,255,255,0.06)",
                     },
                   }}
                 >
-                  <span style={{ fontSize: 16 }}>{emoji}</span>
+                  <span style={{ fontSize: 20 }}>{emoji}</span>
                   {label}
                 </Button>
               ))}
@@ -205,33 +176,15 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation, isLog
             {/* Message input */}
             <TextField
               label="Message"
-              placeholder="What's the condition?"
+              placeholder="What's it like out there?"
               value={message}
               onChange={e => setMessage(e.target.value)}
               size="small"
               fullWidth
               multiline
-              maxRows={3}
+              rows={2}
               sx={inputSx}
             />
-
-            {/* Pinned location indicator */}
-            <Box sx={{ bgcolor: "rgba(255,255,255,0.04)", borderRadius: 2, p: 1.25 }}>
-              <Typography variant="caption" color="rgba(255,255,255,0.3)"
-                display="block" mb={0.25}>
-                Pinned Location
-              </Typography>
-              {pendingLocation ? (
-                <Typography variant="caption" color="rgba(255,255,255,0.7)"
-                  fontFamily="monospace" fontSize={11}>
-                  {pendingLocation.lat.toFixed(4)}, {pendingLocation.lng.toFixed(4)}
-                </Typography>
-              ) : (
-                <Typography variant="caption" color="rgba(255,255,255,0.25)" fontSize={11}>
-                  Click the map to place a pin
-                </Typography>
-              )}
-            </Box>
 
             {/* Post button */}
             <Button
@@ -242,7 +195,8 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation, isLog
               sx={{
                 textTransform: "none",
                 fontWeight: 600,
-                fontSize: 13,
+                fontSize: 14,
+                py: 1.25,
                 borderRadius: 2,
                 bgcolor: "#1565c0",
                 "&:hover": { bgcolor: "#1976d2" },
@@ -254,9 +208,71 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation, isLog
             >
               Post Reaction
             </Button>
-
           </Box>
         )}
+      </Box>
+
+      <Divider sx={{ borderColor: "rgba(255,255,255,0.08)" }} />
+
+      {/* ── Collapsible Location Search ── */}
+      <Box>
+        <Button 
+          fullWidth 
+          onClick={() => setShowManualEntry(!showManualEntry)}
+          endIcon={showManualEntry ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          sx={{ 
+            color: "rgba(255,255,255,0.5)", 
+            textTransform: "none",
+            justifyContent: "space-between",
+            px: 1,
+            "&:hover": { bgcolor: "rgba(255,255,255,0.05)", color: "#fff" }
+          }}
+        >
+          Enter coordinates manually
+        </Button>
+
+        <Collapse in={showManualEntry}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, mt: 2, p: 1 }}>
+            <TextField
+              label="Latitude"
+              placeholder="e.g. 39.7392"
+              value={lat}
+              onChange={e => setLat(e.target.value)}
+              size="small"
+              fullWidth
+              sx={inputSx}
+            />
+            <TextField
+              label="Longitude"
+              placeholder="e.g. -104.9903"
+              value={lng}
+              onChange={e => setLng(e.target.value)}
+              size="small"
+              fullWidth
+              sx={inputSx}
+            />
+            <Button
+              variant="outlined"
+              startIcon={<MyLocationIcon />}
+              fullWidth
+              onClick={handleSubmit}
+              sx={{
+                textTransform: "none",
+                fontWeight: 600,
+                color: "rgba(255,255,255,0.7)",
+                borderColor: "rgba(255,255,255,0.2)",
+                borderRadius: 2,
+                "&:hover": {
+                  borderColor: "rgba(255,255,255,0.5)",
+                  color: "#fff",
+                  bgcolor: "rgba(255,255,255,0.05)",
+                },
+              }}
+            >
+              Search Location
+            </Button>
+          </Box>
+        </Collapse>
       </Box>
 
     </Paper>
