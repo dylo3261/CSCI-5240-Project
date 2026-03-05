@@ -2,6 +2,16 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Avalanche Predictor - Real-time map reaction infrastructure
 
+Globals:
+  HttpApi:
+    CorsConfiguration:
+      AllowOrigins:
+        - "*"
+      AllowMethods:
+        - GET
+      AllowHeaders:
+        - Content-Type
+
 Resources:
 
   ActiveConnectionsTable:
@@ -117,6 +127,25 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*"
 
+  FetchReactionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.lambda_handler
+      CodeUri: lambda/fetch-reactions/
+      Runtime: python3.11
+      Environment:
+        Variables:
+          REACTIONS_TABLE: !Ref UserReactionsTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserReactionsTable
+      Events:
+        GetReactions:
+          Type: HttpApi
+          Properties:
+            Path: /reactions
+            Method: GET
+
 Outputs:
   ActiveConnectionsTableName:
     Value: !Ref ActiveConnectionsTable
@@ -130,3 +159,5 @@ Outputs:
     Value: !Ref WebSocketApi
   WebSocketApiEndpoint:
     Value: !Sub "wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  FetchReactionsEndpoint:
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/reactions"

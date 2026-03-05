@@ -6,6 +6,8 @@ import Sidebar from "../components/Sidebar";
 
 // Replace with the wss:// URL from the SAM stack output WebSocketApiEndpoint
 const WS_URL = "wss://j9jkzycsge.execute-api.us-west-2.amazonaws.com/prod";
+// Replace with the https:// URL from the SAM stack output FetchReactionsEndpoint
+const FETCH_REACTIONS_URL = "https://wpvtd43yyi.execute-api.us-west-2.amazonaws.com/reactions";
 
 const getColor = (v: number) => `hsl(${(1 - v) * 240}, 90%, 50%)`;
 
@@ -16,6 +18,17 @@ export default function Map() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userId, setUserId] = useState("");
   const wsRef = useRef<WebSocket | null>(null);
+
+  // Load pins from the last 24 hours on mount
+  useEffect(() => {
+    fetch(FETCH_REACTIONS_URL)
+      .then(r => {
+        if (!r.ok) throw new Error(`Failed to fetch reactions: ${r.status}`);
+        return r.json() as Promise<ReactionMarker[]>;
+      })
+      .then(data => setReactions(data))
+      .catch(err => console.error("Failed to load initial reactions:", err));
+  }, []);
 
   useEffect(() => {
     let ws: WebSocket | undefined;

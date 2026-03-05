@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Rectangle, Marker, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Rectangle, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import * as L from "leaflet";
 import Papa from "papaparse";
 import "leaflet/dist/leaflet.css";
@@ -11,7 +11,7 @@ const canvasRenderer = L.canvas({ padding: 0.5 });
 
 const getColor = (v: number) => `hsl(${(1 - v) * 240}, 90%, 50%)`;
 
-export type ReactionType = "icy" | "good_snow" | "avalanche_danger";
+export type ReactionType = "icy" | "powder" | "bluebird" | "crowded" | "heavy_snow" | "foggy" | "sketchy";
 
 export interface ReactionMarker {
   reactionId: string;
@@ -26,9 +26,33 @@ export interface ReactionMarker {
 
 const REACTION_EMOJI: Record<ReactionType, string> = {
   icy: "❄️",
-  good_snow: "✨",
-  avalanche_danger: "⚠️",
+  powder: "⛷️",
+  bluebird: "☀️",
+  crowded: "👥",
+  heavy_snow: "🌨️",
+  foggy: "🌫️",
+  sketchy: "⚠️",
 };
+
+const REACTION_LABEL: Record<ReactionType, string> = {
+  icy: "Icy",
+  powder: "Powder",
+  bluebird: "Bluebird",
+  crowded: "Crowded",
+  heavy_snow: "Heavy Snow",
+  foggy: "Foggy",
+  sketchy: "Sketchy",
+};
+
+function formatTimestamp(iso: string): string {
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
 
 function makeIcon(type: ReactionType): L.DivIcon {
   return L.divIcon({
@@ -41,8 +65,12 @@ function makeIcon(type: ReactionType): L.DivIcon {
 
 const reactionIcons: Record<ReactionType, L.DivIcon> = {
   icy: makeIcon("icy"),
-  good_snow: makeIcon("good_snow"),
-  avalanche_danger: makeIcon("avalanche_danger"),
+  powder: makeIcon("powder"),
+  bluebird: makeIcon("bluebird"),
+  crowded: makeIcon("crowded"),
+  heavy_snow: makeIcon("heavy_snow"),
+  foggy: makeIcon("foggy"),
+  sketchy: makeIcon("sketchy"),
 };
 
 const pendingLocationIcon = L.divIcon({
@@ -147,7 +175,25 @@ export default function MapComponent({ coords, reactions, pendingLocation, onLoc
           key={r.reactionId}
           position={[r.latitude, r.longitude]}
           icon={reactionIcons[r.reactionType]}
-        />
+          eventHandlers={{ click: (e) => e.originalEvent.stopPropagation() }}
+        >
+          <Popup>
+            <div style={{ minWidth: 160, fontFamily: "sans-serif" }}>
+              <div style={{ fontSize: 28, lineHeight: 1, marginBottom: 6 }}>
+                {REACTION_EMOJI[r.reactionType]}
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: "#111", marginBottom: 6 }}>
+                {REACTION_LABEL[r.reactionType]}
+              </div>
+              <div style={{ fontSize: 13, color: "#333", lineHeight: 1.5, marginBottom: 8 }}>
+                {r.message}
+              </div>
+              <div style={{ fontSize: 11, color: "#888" }}>
+                {formatTimestamp(r.timestamp)}
+              </div>
+            </div>
+          </Popup>
+        </Marker>
       ))}
     </MapContainer>
   );
