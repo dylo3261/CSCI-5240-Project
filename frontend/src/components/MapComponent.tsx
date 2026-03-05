@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Rectangle, useMap } from "react-leaflet";
-import L from "leaflet";
+import { MapContainer, TileLayer, Rectangle, Marker, useMap, useMapEvents } from "react-leaflet";
+import * as L from "leaflet";
 import Papa from "papaparse";
 import "leaflet/dist/leaflet.css";
 
@@ -9,8 +9,48 @@ const LON_STEP = 2 / 53;
 
 const canvasRenderer = L.canvas({ padding: 0.5 });
 
-// value 0–1 → color (you can swap this out later)
 const getColor = (v: number) => `hsl(${(1 - v) * 240}, 90%, 50%)`;
+
+export type ReactionType = "icy" | "good_snow" | "avalanche_danger";
+
+export interface ReactionMarker {
+  reactionId: string;
+  dataType: string;
+  timestamp: string;
+  reactionType: ReactionType;
+  message: string;
+  latitude: number;
+  longitude: number;
+  userId: string;
+}
+
+const REACTION_EMOJI: Record<ReactionType, string> = {
+  icy: "❄️",
+  good_snow: "✨",
+  avalanche_danger: "⚠️",
+};
+
+function makeIcon(type: ReactionType): L.DivIcon {
+  return L.divIcon({
+    html: `<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.7));">${REACTION_EMOJI[type]}</div>`,
+    className: "",
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
+}
+
+const reactionIcons: Record<ReactionType, L.DivIcon> = {
+  icy: makeIcon("icy"),
+  good_snow: makeIcon("good_snow"),
+  avalanche_danger: makeIcon("avalanche_danger"),
+};
+
+const pendingLocationIcon = L.divIcon({
+  html: `<div style="font-size:24px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));">📍</div>`,
+  className: "",
+  iconSize: [24, 32],
+  iconAnchor: [12, 32],
+});
 
 interface GridCell {
   lat: number;
@@ -20,6 +60,9 @@ interface GridCell {
 
 interface Props {
   coords: { lat: number; lng: number } | null;
+  reactions: ReactionMarker[];
+  pendingLocation: { lat: number; lng: number } | null;
+  onLocationSelect: (lat: number, lng: number) => void;
 }
 
 function FlyTo({ coords }: { coords: { lat: number; lng: number } | null }) {
@@ -32,7 +75,16 @@ function FlyTo({ coords }: { coords: { lat: number; lng: number } | null }) {
   return null;
 }
 
-export default function MapComponent({ coords }: Props) {
+function LocationSelector({ onLocationSelect }: { onLocationSelect: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      onLocationSelect(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
+
+export default function MapComponent({ coords, reactions, pendingLocation, onLocationSelect }: Props) {
   const [cells, setCells] = useState<GridCell[]>([]);
 
   useEffect(() => {
@@ -61,6 +113,7 @@ export default function MapComponent({ coords }: Props) {
         attribution='© <a href="https://carto.com/">CARTO</a>'
       />
       <FlyTo coords={coords} />
+      <LocationSelector onLocationSelect={onLocationSelect} />
       {cells.map((cell, i) => (
         <Rectangle
           key={i}
@@ -74,6 +127,19 @@ export default function MapComponent({ coords }: Props) {
             fillOpacity: 0.35,
             stroke: false,
           }}
+        />
+      ))}
+      {pendingLocation && (
+        <Marker
+          position={[pendingLocation.lat, pendingLocation.lng]}
+          icon={pendingLocationIcon}
+        />
+      )}
+      {reactions.map(r => (
+        <Marker
+          key={r.reactionId}
+          position={[r.latitude, r.longitude]}
+          icon={reactionIcons[r.reactionType]}
         />
       ))}
     </MapContainer>

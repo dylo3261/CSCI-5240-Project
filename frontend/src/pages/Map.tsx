@@ -1,15 +1,75 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Box, Typography } from "@mui/material";
-import MapComponent from "../components/MapComponent";
+import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
+import MapComponent, { type ReactionMarker, type ReactionType } from "../components/MapComponent";
 import Sidebar from "../components/Sidebar";
+
+// Replace with the wss:// URL from the SAM stack output WebSocketApiEndpoint
+const WS_URL = "wss://YOUR_WEBSOCKET_API_ID.execute-api.us-west-2.amazonaws.com/prod";
 
 const getColor = (v: number) => `hsl(${(1 - v) * 240}, 90%, 50%)`;
 
-
-//function for the map page
 export default function Map() {
-  //placeholder zones for shading the map
-  const [submittedCoords, setSubmittedCoords] = useState<{lat: number, lng: number} | null>(null);
+  const [submittedCoords, setSubmittedCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [reactions, setReactions] = useState<ReactionMarker[]>([]);
+  const [pendingLocation, setPendingLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userId, setUserId] = useState("");
+  const wsRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    let ws: WebSocket | undefined;
+
+    (async () => {
+      try {
+        const session = await fetchAuthSession();
+        if (!session.tokens) return;
+
+        const { userId: uid } = await getCurrentUser();
+        setUserId(uid);
+        setIsLoggedIn(true);
+
+        ws = new WebSocket(WS_URL);
+        wsRef.current = ws;
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data as string) as ReactionMarker;
+            if (data.reactionId && data.latitude != null && data.longitude != null && data.reactionType) {
+              setReactions(prev => [...prev, data]);
+            }
+          } catch {
+            console.error("Failed to parse WebSocket message:", event.data);
+          }
+        };
+
+        ws.onerror = (err) => console.error("WebSocket error:", err);
+      } catch {
+        // Not authenticated — no WebSocket
+      }
+    })();
+
+    return () => {
+      ws?.close();
+      wsRef.current = null;
+    };
+  }, []);
+
+  const sendReaction = useCallback(
+    (reactionType: ReactionType, message: string) => {
+      if (wsRef.current?.readyState !== WebSocket.OPEN || !pendingLocation || !userId) return;
+      wsRef.current.send(JSON.stringify({
+        action: "sendReaction",
+        reactionType,
+        message,
+        latitude: pendingLocation.lat,
+        longitude: pendingLocation.lng,
+        userId,
+      }));
+      setPendingLocation(null);
+    },
+    [pendingLocation, userId]
+  );
 
   return (
     <Box sx={{
@@ -19,52 +79,60 @@ export default function Map() {
       height: "calc(100vh - 64px)",
       bgcolor: "#0f1b2d",
       p: 3,
-      }}>
-          {/* Map */}
+    }}>
       <Box sx={{ flex: 1, height: "100%", minWidth: 0 }}>
         <Typography variant="h6" sx={{ color: "#fff", mb: 2 }}>
           Avalanche Risk Map
         </Typography>
         <Box sx={{ position: "relative", height: "calc(100% - 48px)", borderRadius: 3, overflow: "hidden" }}>
-          <MapComponent coords={submittedCoords}/>
+          <MapComponent
+            coords={submittedCoords}
+            reactions={reactions}
+            pendingLocation={pendingLocation}
+            onLocationSelect={(lat, lng) => {
+              if (isLoggedIn) setPendingLocation({ lat, lng });
+            }}
+          />
 
           {/* Legend overlay */}
-         <Box sx={{
-          position: "absolute",
-          bottom: 24,
-          right: 16,
-          zIndex: 1000,
-          bgcolor: "rgba(10, 22, 40, 0.85)",
-          backdropFilter: "blur(8px)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 2,
-          p: 1.5,
-          minWidth: 160,
-          }}>
-          <Typography variant="caption" color="rgba(255,255,255,0.4)"
-            display="block" mb={1} letterSpacing={0.5} textTransform="uppercase" fontSize={10}>
-            Avalanche Risk
-          </Typography>
-
           <Box sx={{
-            height: 10,
-            borderRadius: 1,
-            mb: 0.75,
-            background: `linear-gradient(to right, ${
-              Array.from({ length: 10 }, (_, i) => getColor(i / 9)).join(", ")
-            })`,
+            position: "absolute",
+            bottom: 24,
+            right: 16,
+            zIndex: 1000,
+            bgcolor: "rgba(10, 22, 40, 0.85)",
+            backdropFilter: "blur(8px)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 2,
+            p: 1.5,
+            minWidth: 160,
+          }}>
+            <Typography variant="caption" color="rgba(255,255,255,0.4)"
+              display="block" mb={1} letterSpacing={0.5} textTransform="uppercase" fontSize={10}>
+              Avalanche Risk
+            </Typography>
+            <Box sx={{
+              height: 10,
+              borderRadius: 1,
+              mb: 0.75,
+              background: `linear-gradient(to right, ${
+                Array.from({ length: 10 }, (_, i) => getColor(i / 9)).join(", ")
+              })`,
             }} />
-
             <Box sx={{ display: "flex", justifyContent: "space-between" }}>
               <Typography variant="caption" color="rgba(255,255,255,0.3)" fontSize={10}>Low</Typography>
               <Typography variant="caption" color="rgba(255,255,255,0.3)" fontSize={10}>High</Typography>
             </Box>
           </Box>
+        </Box>
       </Box>
-    </Box>
 
-      {/* Sidebar */}
-      <Sidebar onSubmit={setSubmittedCoords} />
+      <Sidebar
+        onSubmit={setSubmittedCoords}
+        sendReaction={sendReaction}
+        pendingLocation={pendingLocation}
+        isLoggedIn={isLoggedIn}
+      />
     </Box>
   );
 }

@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Avalanche Predictor - Real-time map reaction infrastructure
+
+Resources:
+
+  ActiveConnectionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ActiveConnectionsTable
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: connectionId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: connectionId
+          KeyType: HASH
+
+  UserReactionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: UserReactionsTable
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: reactionId
+          AttributeType: S
+        - AttributeName: dataType
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: reactionId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: TimeIndex
+          KeySchema:
+            - AttributeName: dataType
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  WebSocketApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: AvalancheWebSocketApi
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: "$request.body.action"
+
+  WebSocketStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref WebSocketApi
+      StageName: prod
+      AutoDeploy: true
+
+  WebSocketHandlerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.lambda_handler
+      CodeUri: lambda/websocket-handler/
+      Runtime: python3.11
+      Environment:
+        Variables:
+          CONNECTIONS_TABLE: !Ref ActiveConnectionsTable
+          REACTIONS_TABLE: !Ref UserReactionsTable
+          WEBSOCKET_ENDPOINT: !Sub "https://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ActiveConnectionsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserReactionsTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - execute-api:ManageConnections
+              Resource:
+                - !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*"
+      Events:
+        ConnectRoute:
+          Type: WebSocket
+          Properties:
+            ApiId: !Ref WebSocketApi
+            RouteKey: $connect
+        DisconnectRoute:
+          Type: WebSocket
+          Properties:
+            ApiId: !Ref WebSocketApi
+            RouteKey: $disconnect
+        SendReactionRoute:
+          Type: WebSocket
+          Properties:
+            ApiId: !Ref WebSocketApi
+            RouteKey: sendReaction
+
+Outputs:
+  ActiveConnectionsTableName:
+    Value: !Ref ActiveConnectionsTable
+  ActiveConnectionsTableArn:
+    Value: !GetAtt ActiveConnectionsTable.Arn
+  UserReactionsTableName:
+    Value: !Ref UserReactionsTable
+  UserReactionsTableArn:
+    Value: !GetAtt UserReactionsTable.Arn
+  WebSocketApiId:
+    Value: !Ref WebSocketApi
+  WebSocketApiEndpoint:
+    Value: !Sub "wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
