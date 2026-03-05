@@ -3,7 +3,7 @@
    AI-powered avalanche prediction system using AWS Lambda and machine learning.
 
    ## Architecture
-![Architecture Diagram](docs/ArchitectureV3.png)
+![Architecture Diagram](docs/ArchitectureV4.png)
 
    ## Project Structure
    - `lambda/` - AWS Lambda functions
