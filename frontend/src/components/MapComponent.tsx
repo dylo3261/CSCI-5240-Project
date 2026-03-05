@@ -90,14 +90,21 @@ export default function MapComponent({ coords, reactions, pendingLocation, onLoc
   useEffect(() => {
     // Swap this for JSON fetch when it's ready
     fetch("/colorado_mountains_2mi.csv")
-      .then(r => r.text())
+      .then(r => {
+        if (!r.ok) throw new Error(`Failed to fetch grid CSV: ${r.status}`);
+        return r.text();
+      })
       .then(csv => {
         const { data } = Papa.parse(csv, {
           header: true,
           dynamicTyping: true,
           skipEmptyLines: true,
         });
-        setCells(data as GridCell[]);
+        const valid = (data as GridCell[]).filter(
+          c => typeof c.lat === "number" && !isNaN(c.lat) &&
+               typeof c.lon === "number" && !isNaN(c.lon)
+        );
+        setCells(valid);
       })
       .catch(err => console.error("Failed to load grid data:", err));
   }, []);

@@ -5,7 +5,7 @@ import MapComponent, { type ReactionMarker, type ReactionType } from "../compone
 import Sidebar from "../components/Sidebar";
 
 // Replace with the wss:// URL from the SAM stack output WebSocketApiEndpoint
-const WS_URL = "wss://YOUR_WEBSOCKET_API_ID.execute-api.us-west-2.amazonaws.com/prod";
+const WS_URL = "wss://j9jkzycsge.execute-api.us-west-2.amazonaws.com/prod";
 
 const getColor = (v: number) => `hsl(${(1 - v) * 240}, 90%, 50%)`;
 
@@ -19,13 +19,16 @@ export default function Map() {
 
   useEffect(() => {
     let ws: WebSocket | undefined;
+    let cancelled = false;
 
     (async () => {
       try {
         const session = await fetchAuthSession();
-        if (!session.tokens) return;
+        if (cancelled || !session.tokens) return;
 
         const { userId: uid } = await getCurrentUser();
+        if (cancelled) return;
+
         setUserId(uid);
         setIsLoggedIn(true);
 
@@ -44,12 +47,14 @@ export default function Map() {
         };
 
         ws.onerror = (err) => console.error("WebSocket error:", err);
+        ws.onclose = (evt) => console.warn(`WebSocket closed — code: ${evt.code}, reason: "${evt.reason}"`);
       } catch {
         // Not authenticated — no WebSocket
       }
     })();
 
     return () => {
+      cancelled = true;
       ws?.close();
       wsRef.current = null;
     };

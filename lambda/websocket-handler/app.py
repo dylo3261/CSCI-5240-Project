@@ -2,6 +2,7 @@ import json
 import os
 import uuid
 from datetime import datetime, timezone
+from decimal import Decimal
 
 import boto3
 from botocore.exceptions import ClientError
@@ -50,7 +51,22 @@ def _send_reaction(event, sender_connection_id):
     reaction_id = str(uuid.uuid4())
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
+    # DynamoDB rejects float — use Decimal(str(...)) to avoid precision artifacts
     item = {
+        "reactionId":   reaction_id,
+        "dataType":     "REACTION",
+        "timestamp":    timestamp,
+        "reactionType": body["reactionType"],
+        "message":      body["message"],
+        "latitude":     Decimal(str(body["latitude"])),
+        "longitude":    Decimal(str(body["longitude"])),
+        "userId":       body["userId"],
+    }
+
+    reactions_table.put_item(Item=item)
+
+    # json.dumps cannot serialize Decimal, so broadcast uses original float values
+    broadcast = {
         "reactionId":   reaction_id,
         "dataType":     "REACTION",
         "timestamp":    timestamp,
@@ -61,10 +77,8 @@ def _send_reaction(event, sender_connection_id):
         "userId":       body["userId"],
     }
 
-    reactions_table.put_item(Item=item)
-
     apigw = boto3.client("apigatewaymanagementapi", endpoint_url=WEBSOCKET_ENDPOINT)
-    message = json.dumps(item).encode("utf-8")
+    message = json.dumps(broadcast).encode("utf-8")
 
     # Scan with pagination to handle large connection counts
     connections = []

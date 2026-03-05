@@ -77,22 +77,45 @@ Resources:
                 - execute-api:ManageConnections
               Resource:
                 - !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*"
-      Events:
-        ConnectRoute:
-          Type: WebSocket
-          Properties:
-            ApiId: !Ref WebSocketApi
-            RouteKey: $connect
-        DisconnectRoute:
-          Type: WebSocket
-          Properties:
-            ApiId: !Ref WebSocketApi
-            RouteKey: $disconnect
-        SendReactionRoute:
-          Type: WebSocket
-          Properties:
-            ApiId: !Ref WebSocketApi
-            RouteKey: sendReaction
+
+  WebSocketIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebSocketHandlerFunction.Arn}/invocations"
+
+  ConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $connect
+      AuthorizationType: NONE
+      Target: !Sub "integrations/${WebSocketIntegration}"
+
+  DisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $disconnect
+      AuthorizationType: NONE
+      Target: !Sub "integrations/${WebSocketIntegration}"
+
+  SendReactionRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: sendReaction
+      AuthorizationType: NONE
+      Target: !Sub "integrations/${WebSocketIntegration}"
+
+  WebSocketHandlerPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref WebSocketHandlerFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*"
 
 Outputs:
   ActiveConnectionsTableName:
