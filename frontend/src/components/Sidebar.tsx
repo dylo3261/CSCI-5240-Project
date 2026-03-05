@@ -119,7 +119,7 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation, isLog
             <Button
               variant="contained"
               fullWidth
-              onClick={() => window.location.href = "/login"}
+              onClick={() => window.location.href = "/account"}
               sx={{
                 textTransform: "none",
                 fontWeight: 600,
@@ -133,7 +133,7 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation, isLog
               Sign In
             </Button>
           </Box>
-          ) : (
+        ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
 
             {/* Pinned location indicator - moved up for logical flow */}
