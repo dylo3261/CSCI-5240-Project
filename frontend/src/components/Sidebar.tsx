@@ -113,11 +113,27 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation, isLog
             p: 2,
             textAlign: "center",
           }}>
-            <Typography variant="body2" color="rgba(255,255,255,0.5)">
-              Sign in to post reactions
+            <Typography variant="body2" color="rgba(255,255,255,0.6)" mb={2}>
+              You need an account to drop reactions on the map.
             </Typography>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={() => window.location.href = "/login"}
+              sx={{
+                textTransform: "none",
+                fontWeight: 600,
+                fontSize: 14,
+                py: 1,
+                borderRadius: 2,
+                bgcolor: "#1565c0",
+                "&:hover": { bgcolor: "#1976d2" },
+              }}
+            >
+              Sign In
+            </Button>
           </Box>
-        ) : (
+          ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
 
             {/* Pinned location indicator - moved up for logical flow */}
