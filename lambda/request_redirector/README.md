@@ -24,7 +24,7 @@ Invoked by API Gateway with 2 types of requests:
 ```
 
 ## Local Testing
-Set the following in a `.env` file:
+Set the following in a `.env` file and run `python test_local.py`:
 ```
 AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY

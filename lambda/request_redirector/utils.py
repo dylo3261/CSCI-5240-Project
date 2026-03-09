@@ -4,6 +4,8 @@ import time
 import logging
 import boto3
 import urllib.request
+import csv
+from dotenv import load_dotenv # only load .env for local testing
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +14,6 @@ IS_LAMBDA = os.environ.get("AWS_EXECUTION_ENV", "").startswith("AWS_Lambda")
 
 # only load .env for local testing
 if not IS_LAMBDA:
-    from dotenv import load_dotenv
     load_dotenv()
 
 # Set names of S3 bucket and explainability model
@@ -27,7 +28,7 @@ COLORADO_MIN_LON = -109.001
 
 # Today's date for S3 key
 def _get_today():
-    return time.strftime("%Y-%m-%d")
+    return time.strftime("%m_%d_%Y")
 
 # Check if location is in Colorado / specified bounds
 def is_valid_location(longitude, latitude):
@@ -38,9 +39,16 @@ def is_valid_location(longitude, latitude):
 def fetch_colorado_overview():
     try:
         s3 = boto3.client("s3")
-        key = f"colorado_overview_{_get_today()}.json"
+        key = f"colorado_overview_{_get_today()}.csv"
         response = s3.get_object(Bucket=S3_BUCKET, Key=key)
-        return json.loads(response["Body"].read())
+        
+        # Decode the file bytes and parse as CSV
+        body_text = response["Body"].read().decode('utf-8').splitlines()
+        reader = csv.DictReader(body_text)
+        
+        # Convert CSV rows to a list of dictionaries to return as JSON
+        data = [row for row in reader]
+        return data
     
     except Exception as e:
         logger.error(f"Failed to fetch Colorado overview: {e}")
