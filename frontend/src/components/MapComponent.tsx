@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Rectangle, useMap } from "react-leaflet";
-import L from "leaflet";
+import { MapContainer, TileLayer, Rectangle, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
+import * as L from "leaflet";
 import Papa from "papaparse";
 import "leaflet/dist/leaflet.css";
 
@@ -9,8 +9,79 @@ const LON_STEP = 2 / 53;
 
 const canvasRenderer = L.canvas({ padding: 0.5 });
 
-// value 0–1 → color (you can swap this out later)
 const getColor = (v: number) => `hsl(${(1 - v) * 240}, 90%, 50%)`;
+
+export type ReactionType = "icy" | "powder" | "bluebird" | "crowded" | "heavy_snow" | "foggy" | "sketchy" | "avalanche";
+
+export interface ReactionMarker {
+  reactionId: string;
+  dataType: string;
+  timestamp: string;
+  reactionType: ReactionType;
+  message: string;
+  latitude: number;
+  longitude: number;
+  userId: string;
+}
+
+const REACTION_EMOJI: Record<ReactionType, string> = {
+  icy: "❄️",
+  powder: "⛷️",
+  bluebird: "☀️",
+  crowded: "👥",
+  heavy_snow: "🌨️",
+  foggy: "🌫️",
+  sketchy: "⚠️",
+  avalanche: "🏔️",
+};
+
+const REACTION_LABEL: Record<ReactionType, string> = {
+  icy: "Icy",
+  powder: "Powder",
+  bluebird: "Bluebird",
+  crowded: "Crowded",
+  heavy_snow: "Heavy Snow",
+  foggy: "Foggy",
+  sketchy: "Sketchy",
+  avalanche: "Avalanche",
+};
+
+function formatTimestamp(iso: string): string {
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function makeIcon(type: ReactionType): L.DivIcon {
+  return L.divIcon({
+    html: `<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.7));">${REACTION_EMOJI[type]}</div>`,
+    className: "",
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
+}
+
+const reactionIcons: Record<ReactionType, L.DivIcon> = {
+  icy: makeIcon("icy"),
+  powder: makeIcon("powder"),
+  bluebird: makeIcon("bluebird"),
+  crowded: makeIcon("crowded"),
+  heavy_snow: makeIcon("heavy_snow"),
+  foggy: makeIcon("foggy"),
+  sketchy: makeIcon("sketchy"),
+  avalanche: makeIcon("avalanche"),
+};
+
+const pendingLocationIcon = L.divIcon({
+  html: `<div style="font-size:24px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));">📍</div>`,
+  className: "",
+  iconSize: [24, 32],
+  iconAnchor: [12, 32],
+});
 
 interface GridCell {
   lat: number;
@@ -20,6 +91,9 @@ interface GridCell {
 
 interface Props {
   coords: { lat: number; lng: number } | null;
+  reactions: ReactionMarker[];
+  pendingLocation: { lat: number; lng: number } | null;
+  onLocationSelect: (lat: number, lng: number) => void;
 }
 
 function FlyTo({ coords }: { coords: { lat: number; lng: number } | null }) {
@@ -32,20 +106,36 @@ function FlyTo({ coords }: { coords: { lat: number; lng: number } | null }) {
   return null;
 }
 
-export default function MapComponent({ coords }: Props) {
+function LocationSelector({ onLocationSelect }: { onLocationSelect: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      onLocationSelect(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
+
+export default function MapComponent({ coords, reactions, pendingLocation, onLocationSelect }: Props) {
   const [cells, setCells] = useState<GridCell[]>([]);
 
   useEffect(() => {
     // Swap this for JSON fetch when it's ready
     fetch("/colorado_mountains_2mi.csv")
-      .then(r => r.text())
+      .then(r => {
+        if (!r.ok) throw new Error(`Failed to fetch grid CSV: ${r.status}`);
+        return r.text();
+      })
       .then(csv => {
         const { data } = Papa.parse(csv, {
           header: true,
           dynamicTyping: true,
           skipEmptyLines: true,
         });
-        setCells(data as GridCell[]);
+        const valid = (data as GridCell[]).filter(
+          c => typeof c.lat === "number" && !isNaN(c.lat) &&
+               typeof c.lon === "number" && !isNaN(c.lon)
+        );
+        setCells(valid);
       })
       .catch(err => console.error("Failed to load grid data:", err));
   }, []);
@@ -61,6 +151,7 @@ export default function MapComponent({ coords }: Props) {
         attribution='© <a href="https://carto.com/">CARTO</a>'
       />
       <FlyTo coords={coords} />
+      <LocationSelector onLocationSelect={onLocationSelect} />
       {cells.map((cell, i) => (
         <Rectangle
           key={i}
@@ -75,6 +166,37 @@ export default function MapComponent({ coords }: Props) {
             stroke: false,
           }}
         />
+      ))}
+      {pendingLocation && (
+        <Marker
+          position={[pendingLocation.lat, pendingLocation.lng]}
+          icon={pendingLocationIcon}
+        />
+      )}
+      {reactions.filter(r => reactionIcons[r.reactionType]).map(r => (
+        <Marker
+          key={r.reactionId}
+          position={[r.latitude, r.longitude]}
+          icon={reactionIcons[r.reactionType]}
+          eventHandlers={{ click: (e) => e.originalEvent.stopPropagation() }}
+        >
+          <Popup>
+            <div style={{ minWidth: 160, fontFamily: "sans-serif" }}>
+              <div style={{ fontSize: 28, lineHeight: 1, marginBottom: 6 }}>
+                {REACTION_EMOJI[r.reactionType]}
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: "#111", marginBottom: 6 }}>
+                {REACTION_LABEL[r.reactionType]}
+              </div>
+              <div style={{ fontSize: 13, color: "#333", lineHeight: 1.5, marginBottom: 8 }}>
+                {r.message}
+              </div>
+              <div style={{ fontSize: 11, color: "#888" }}>
+                {formatTimestamp(r.timestamp)}
+              </div>
+            </div>
+          </Popup>
+        </Marker>
       ))}
     </MapContainer>
   );

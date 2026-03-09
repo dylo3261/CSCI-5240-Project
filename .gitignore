@@ -248,3 +248,6 @@ models/
 
 # Lambda
 lambda/cron-job/data/
+
+# AWS SAM
+.aws-sam/
