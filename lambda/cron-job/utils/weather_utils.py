@@ -71,20 +71,20 @@ def get_station_weather(station_triplet: str,
         if 'SNOWDEPTH' in df.columns:
             value = row['SNOWDEPTH']
             if pd.notna(value) and value != '':
-                result['snow_depth'] = float(value) * 2.54  # inches to cm
+                result['snow_depth'] = round(float(value) * 2.54, 3)  # inches to cm
         
         # SWE (convert inches to cm)
         if 'SWE' in df.columns:
             value = row['SWE']
             if pd.notna(value) and value != '':
-                result['swe'] = float(value) * 2.54  # inches to cm
+                result['swe'] = round(float(value) * 2.54, 3)  # inches to cm
         
         # Temperature (convert Fahrenheit to Celsius: C = (F - 32) * 5/9)
         if 'AIR TEMP' in df.columns:
             value = row['AIR TEMP']
             if pd.notna(value) and value != '':
                 temp_f = float(value)
-                result['temp'] = (temp_f - 32) * 5 / 9  # F to C
+                result['temp'] = round((temp_f - 32) * 5 / 9, 3)  # F to C
         
         return result
         

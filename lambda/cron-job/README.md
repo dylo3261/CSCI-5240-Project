@@ -6,12 +6,12 @@ Runs daily via **EventBridge → Lambda**.
 
 1. **EventBridge** triggers the Lambda daily
 2. **CAIC update** (`python update_caic_data.py --lambda`)
-   - Downloads `caic_clean_cache.csv` from S3
+   - Downloads `daily_caic_data.csv` from S3
    - Determines the latest date in the existing clean data
    - Fetches new observation reports from the CAIC API since that date
    - Cleans new data via `utils/process_caic.load_caic_data()`
    - Merges with existing clean data, deduplicates, and sorts
-   - Uploads updated `caic_clean_cache.csv` to S3
+   - Uploads updated `daily_caic_data.csv` to S3
 3. **Weather update** (`python update_weather_data.py --lambda`)
    - Downloads `daily_station_data.csv` and `snotel_stations_const.csv` from S3
    - For each station in `snotel_stations_const.csv`, fetches `snow_depth`, `swe`, and `temp`
@@ -24,8 +24,8 @@ Runs daily via **EventBridge → Lambda**.
 
 | S3 Key | Type | Description |
 |--------|------|-------------|
-| `caic_clean_cache.csv` | Cache (daily) | Cleaned & filtered CAIC avalanche observations starting in 2016 (updated daily by Lambda) |
-| `daily_station_data.csv` | Cache (daily) | Daily SNOTEL station weather (snow_depth, swe, temp, new_snow_24hr) (updated daily by Lambda) |
+| `daily_caic_data.csv` | Cache (daily) | Cleaned & filtered CAIC avalanche observations starting in 2016 (updated daily by Lambda) |
+| `daily_weather_data.csv` | Cache (daily) | Daily SNOTEL station weather (snow_depth, swe, temp, new_snow_24hr) (updated daily by Lambda) |
 | `snotel_stations_const.csv` | Constant | Colorado SNOTEL station metadata (not updated daily, but stored in S3) |
 | `terrain_const.csv` | Constant | Terrain features for avalanche locations (not updated daily, but stored in S3) |
 
@@ -43,39 +43,25 @@ python update_caic_data.py --lambda
 python update_weather_data.py --lambda
 ```
 
-## Deployment
-
-```bash
-# Create deployment package
-cd /Users/eddiekiernan/Desktop/CSCI-5240-Project/lambda/cron-job
-
-# Create a clean build directory
-mkdir -p build
-pip install -r requirements.txt -t build/
-
-# Copy your code into the build directory
-cp lambda_function.py build/
-cp update_caic_data.py build/
-cp update_weather_data.py build/
-cp -r utils build/
-
-# DO NOT copy .env, data/, venv/, or __pycache__/
-
-# Strip unnecessary files and create the zip
-cd build
-
-find . -type d -name "tests" -exec rm -rf {} + 2>/dev/null
-find . -type d -name "test" -exec rm -rf {} + 2>/dev/null
-find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null
-find . -name "*.pyc" -delete 2>/dev/null
-find . -name "*.pyo" -delete 2>/dev/null
-find . -type d -name "*.dist-info" -exec rm -rf {} + 2>/dev/null
-find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null
-find . -name "*.md" ! -name "README.md" -delete 2>/dev/null
-find . -name "*.txt" ! -name "requirements.txt" -delete 2>/dev/null
-find . -name "*.rst" -delete 2>/dev/null
-
-zip -r9 ../deployment.zip .
-
-cd ..
+Ensure set up .env file with AWS credentials in `/cron-job` directory
 ```
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_BUCKET=...
+AWS_DEFAULT_REGION=...
+AWS_EXECUTION_ENV=...
+```
+
+## Deployment
+Amazon ECR container using docker to deploy the function
+
+**STEP 1: LOGIN**
+aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 029953330549.dkr.ecr.us-west-2.amazonaws.com
+
+**STEP 2: PUSH CHANGES TO AMAZON ECR**
+docker build --platform linux/amd64 -t cron-lambda . && \
+docker tag cron-lambda:latest 029953330549.dkr.ecr.us-west-2.amazonaws.com/cron-lambda:latest && \
+docker push 029953330549.dkr.ecr.us-west-2.amazonaws.com/cron-lambda:latest
+
+**STEP 3: REDEPLOY IN LAMBDA**
+Lambda Console > daily-data-scraper > Image tab > deploy new image> browse images > select latest > save
