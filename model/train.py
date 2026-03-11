@@ -62,6 +62,7 @@ def train(cfg: TrainConfig | None = None) -> xgb.XGBRegressor:
 
     # ── 4. Train ─────────────────────────────────────────────────────────
     xgb_params = cfg.xgb
+    print(xgb_params)
     model = xgb.XGBRegressor(
         n_estimators=xgb_params.n_estimators,
         max_depth=xgb_params.max_depth,
@@ -159,20 +160,20 @@ def parse_args(argv: list[str] | None = None) -> TrainConfig:
     parser.add_argument(
         "--lr",
         type=float,
-        default=0.1,
-        help="Learning rate (default: 0.1).",
+        default=0.05,
+        help="Learning rate (default: 0.05).",
     )
     parser.add_argument(
         "--n-estimators",
         type=int,
-        default=300,
-        help="Max boosting rounds (default: 300).",
+        default=1000,
+        help="Max boosting rounds (default: 1000).",
     )
     parser.add_argument(
         "--max-depth",
         type=int,
-        default=6,
-        help="Max tree depth (default: 6).",
+        default=10,
+        help="Max tree depth (default: 10).",
     )
     parser.add_argument(
         "--seed",
