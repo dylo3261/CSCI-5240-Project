@@ -35,3 +35,20 @@ S3_BUCKET
 
 ## Deployment
 
+Because `boto3` is included natively in the AWS Lambda Python runtime, and `python-dotenv` is only used for local testing, **you do not need to package any external dependencies**.
+
+### 1. Build the zip file
+
+```bash
+zip -j deployment.zip lambda_function.py utils.py
+```
+*(The `-j` flag ensures the files are added to the root of the zip, without their parent folder structure.)*
+
+### 2. Upload to Lambda
+You can upload `deployment.zip` directly through the AWS Console, or deploy it instantly using the AWS CLI:
+
+```bash
+aws lambda update-function-code \
+    --function-name request-redirector \
+    --zip-file fileb://deployment.zip
+```
