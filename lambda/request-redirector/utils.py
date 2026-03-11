@@ -20,15 +20,13 @@ if not IS_LAMBDA:
 S3_BUCKET = os.environ.get("S3_BUCKET", "location-data-app-bucket")
 MODEL_NAME = os.environ.get("MODEL_NAME", "explainable-inference")
 
+KEY = "daily-grid-scores/latest/daily_map_grid_scores.csv"
+
 # Colorado bounds, may change is we make bounds smaller/more dynamic
 COLORADO_MAX_LAT = 41.001
 COLORADO_MIN_LAT = 36.999
 COLORADO_MAX_LON = -102.001
 COLORADO_MIN_LON = -109.001
-
-# Today's date for S3 key
-def _get_today():
-    return time.strftime("%m_%d_%Y")
 
 # Check if location is in Colorado / specified bounds
 def is_valid_location(longitude, latitude):
@@ -39,8 +37,7 @@ def is_valid_location(longitude, latitude):
 def fetch_colorado_overview():
     try:
         s3 = boto3.client("s3")
-        key = f"colorado_overview_{_get_today()}.csv"
-        response = s3.get_object(Bucket=S3_BUCKET, Key=key)
+        response = s3.get_object(Bucket=S3_BUCKET, Key=KEY)
         
         # Decode the file bytes and parse as CSV
         body_text = response["Body"].read().decode('utf-8').splitlines()
