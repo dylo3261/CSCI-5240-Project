@@ -5,7 +5,6 @@ import logging
 import boto3
 import urllib.request
 import csv
-from dotenv import load_dotenv # only load .env for local testing
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +13,7 @@ IS_LAMBDA = os.environ.get("AWS_EXECUTION_ENV", "").startswith("AWS_Lambda")
 
 # only load .env for local testing
 if not IS_LAMBDA:
+    from dotenv import load_dotenv
     load_dotenv()
 
 # Set names of S3 bucket and explainability model
