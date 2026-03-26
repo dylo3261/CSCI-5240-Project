@@ -14,6 +14,6 @@
 
    ## Team Responsibilities
    - DevOps: Dylan
-   - AI Model: Kevin, Andy
+   - AI Model: Kevin, Andy, Sam
    - Lambda/Data: Eddie
    - Frontend: Robbey, Tyler
