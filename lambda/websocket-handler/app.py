@@ -11,6 +11,10 @@ CONNECTIONS_TABLE = os.environ["CONNECTIONS_TABLE"]
 REACTIONS_TABLE = os.environ["REACTIONS_TABLE"]
 WEBSOCKET_ENDPOINT = os.environ["WEBSOCKET_ENDPOINT"]
 
+VALID_REACTION_TYPES = frozenset({
+    "icy", "powder", "bluebird", "crowded", "heavy_snow", "foggy", "sketchy", "avalanche"
+})
+
 dynamodb = boto3.resource("dynamodb")
 connections_table = dynamodb.Table(CONNECTIONS_TABLE)
 reactions_table = dynamodb.Table(REACTIONS_TABLE)
@@ -47,6 +51,9 @@ def _send_reaction(event, sender_connection_id):
     missing = [f for f in required if body.get(f) is None]
     if missing:
         return {"statusCode": 400, "body": f"Missing required fields: {', '.join(missing)}"}
+
+    if body["reactionType"] not in VALID_REACTION_TYPES:
+        return {"statusCode": 400, "body": f"Invalid reactionType: {body['reactionType']!r}"}
 
     reaction_id = str(uuid.uuid4())
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"

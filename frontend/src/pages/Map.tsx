@@ -64,7 +64,7 @@ export default function Map() {
         if (!r.ok) throw new Error(`Failed to fetch reactions: ${r.status}`);
         return r.json() as Promise<ReactionMarker[]>;
       })
-      .then(data => setReactions(data))
+      .then(data => setReactions(data.filter(r => isValidReactionType(r.reactionType))))
       .catch(err => console.error("Failed to load initial reactions:", err));
   }, []);
 
