@@ -76,6 +76,15 @@ const reactionIcons: Record<ReactionType, L.DivIcon> = {
   avalanche: makeIcon("avalanche"),
 };
 
+// Fallback used when a reaction arrives with an unrecognized type. Keeps the
+// marker renderable so Leaflet never receives `undefined` as an icon prop.
+const fallbackReactionIcon = L.divIcon({
+  html: `<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.7));">📌</div>`,
+  className: "",
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+});
+
 const pendingLocationIcon = L.divIcon({
   html: `<div style="font-size:24px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));">📍</div>`,
   className: "",
@@ -173,11 +182,13 @@ export default function MapComponent({ coords, reactions, pendingLocation, onLoc
           icon={pendingLocationIcon}
         />
       )}
-      {reactions.filter(r => reactionIcons[r.reactionType]).map(r => (
+      {reactions.map(r => {
+        const icon = reactionIcons[r.reactionType] ?? fallbackReactionIcon;
+        return (
         <Marker
           key={r.reactionId}
           position={[r.latitude, r.longitude]}
-          icon={reactionIcons[r.reactionType]}
+          icon={icon}
           eventHandlers={{ click: (e) => e.originalEvent.stopPropagation() }}
         >
           <Popup>
@@ -197,7 +208,8 @@ export default function MapComponent({ coords, reactions, pendingLocation, onLoc
             </div>
           </Popup>
         </Marker>
-      ))}
+        );
+      })}
     </MapContainer>
   );
 }

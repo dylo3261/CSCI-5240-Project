@@ -1,8 +1,46 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Component, type ReactNode, type ErrorInfo } from "react";
 import { Box, Typography } from "@mui/material";
 import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
 import MapComponent, { type ReactionMarker, type ReactionType } from "../components/MapComponent";
 import Sidebar from "../components/Sidebar";
+
+// Runtime-validated set of valid reaction types — prevents unrecognized server
+// values (e.g. wrong casing, renamed variants) from reaching the map renderer.
+const VALID_REACTION_TYPES = new Set<string>([
+  "icy", "powder", "bluebird", "crowded", "heavy_snow", "foggy", "sketchy", "avalanche",
+]);
+
+function isValidReactionType(value: string): value is ReactionType {
+  return VALID_REACTION_TYPES.has(value);
+}
+
+// Error Boundary wrapping only MapComponent so a bad pin never unmounts Map
+// (which would also close the WebSocket connection).
+interface MapErrorBoundaryState { hasError: boolean; error: Error | null }
+class MapErrorBoundary extends Component<{ children: ReactNode }, MapErrorBoundaryState> {
+  state: MapErrorBoundaryState = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error: Error): MapErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("MapComponent crashed — recovering via error boundary:", error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "#0f1b2d" }}>
+          <Typography color="error" variant="body2">
+            Map failed to render a pin. Reload the map to retry.
+          </Typography>
+        </Box>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // Replace with the wss:// URL from the SAM stack output WebSocketApiEndpoint
 const WS_URL = "wss://j9jkzycsge.execute-api.us-west-2.amazonaws.com/prod";
@@ -51,8 +89,16 @@ export default function Map() {
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data as string) as ReactionMarker;
-            if (data.reactionId && data.latitude != null && data.longitude != null && data.reactionType) {
+            if (
+              data.reactionId &&
+              data.latitude != null &&
+              data.longitude != null &&
+              typeof data.reactionType === "string" &&
+              isValidReactionType(data.reactionType)
+            ) {
               setReactions(prev => [...prev, data]);
+            } else {
+              console.warn("Dropping WebSocket reaction — missing fields or unknown reactionType:", data);
             }
           } catch {
             console.error("Failed to parse WebSocket message:", event.data);
@@ -103,14 +149,16 @@ export default function Map() {
           Avalanche Risk Map
         </Typography>
         <Box sx={{ position: "relative", height: "calc(100% - 48px)", borderRadius: 3, overflow: "hidden" }}>
-          <MapComponent
-            coords={submittedCoords}
-            reactions={reactions}
-            pendingLocation={pendingLocation}
-            onLocationSelect={(lat, lng) => {
-              if (isLoggedIn) setPendingLocation({ lat, lng });
-            }}
-          />
+          <MapErrorBoundary>
+            <MapComponent
+              coords={submittedCoords}
+              reactions={reactions}
+              pendingLocation={pendingLocation}
+              onLocationSelect={(lat, lng) => {
+                if (isLoggedIn) setPendingLocation({ lat, lng });
+              }}
+            />
+          </MapErrorBoundary>
 
           {/* Legend overlay */}
           <Box sx={{
