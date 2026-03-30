@@ -6,28 +6,29 @@ Runs daily via **EventBridge → Lambda**.
 
 1. **EventBridge** triggers the Lambda daily
 2. **CAIC update** (`python update_caic_data.py --lambda`)
-   - Downloads `daily_caic_data.csv` from S3
-   - Determines the latest date in the existing clean data
-   - Fetches new observation reports from the CAIC API since that date
+   - Downloads current `latest/daily_caic_data.csv` from S3
+   - Archives it to `YYYY-MM-DD/daily_caic_data.csv` (date from the data)
+   - Fetches today's new observation reports from the CAIC API
    - Cleans new data via `utils/process_caic.load_caic_data()`
-   - Merges with existing clean data, deduplicates, and sorts
-   - Uploads updated `daily_caic_data.csv` to S3
+   - Saves single-day CSV and uploads to `latest/daily_caic_data.csv`
 3. **Weather update** (`python update_weather_data.py --lambda`)
-   - Downloads `daily_station_data.csv` and `snotel_stations_const.csv` from S3
-   - For each station in `snotel_stations_const.csv`, fetches `snow_depth`, `swe`, and `temp`
-   - Computes `new_snow_24hr` as today's `snow_depth` minus yesterday's stored value
-   - On first run (no existing data), fetches both today and yesterday to bootstrap
-   - On subsequent runs, only fetches today and uses yesterday's data from the CSV
-   - Merges, deduplicates, and uploads `daily_station_data.csv` to S3
+   - Downloads current `latest/daily_station_data.csv` from S3
+   - Archives it to `YYYY-MM-DD/daily_station_data.csv` (date from the data)
+   - Downloads `constant/snotel_stations_const.csv` for station list
+   - Looks up yesterday's snow depths from archive for `new_snow_24hr` calculation
+   - For each station, fetches today's `snow_depth`, `swe`, and `temp`
+   - Saves single-day CSV and uploads to `latest/daily_station_data.csv`
 
 ## S3 Bucket: `daily-weather-data-csv-bucket`
 
-| S3 Key | Type | Description |
-|--------|------|-------------|
-| `daily_caic_data.csv` | Cache (daily) | Cleaned & filtered CAIC avalanche observations starting in 2016 (updated daily by Lambda) |
-| `daily_weather_data.csv` | Cache (daily) | Daily SNOTEL station weather (snow_depth, swe, temp, new_snow_24hr) (updated daily by Lambda) |
-| `snotel_stations_const.csv` | Constant | Colorado SNOTEL station metadata (not updated daily, but stored in S3) |
-| `terrain_const.csv` | Constant | Terrain features for avalanche locations (not updated daily, but stored in S3) |
+| S3 Key Pattern | Type | Description |
+|---|---|---|
+| `constant/snotel_stations_const.csv` | Constant | Colorado SNOTEL station metadata (not updated daily) |
+| `constant/terrain_const.csv` | Constant | Terrain features for avalanche locations (not updated daily) |
+| `latest/daily_caic_data.csv` | Latest (daily) | Today's cleaned & filtered CAIC avalanche observations |
+| `latest/daily_station_data.csv` | Latest (daily) | Today's SNOTEL station weather (snow_depth, swe, temp, new_snow_24hr) |
+| `YYYY-MM-DD/daily_caic_data.csv` | Archive | Single-day CAIC data for that date |
+| `YYYY-MM-DD/daily_station_data.csv` | Archive | Single-day weather data for that date |
 
 ## Local Usage
 
