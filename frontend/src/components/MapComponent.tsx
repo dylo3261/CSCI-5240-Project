@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Rectangle, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import * as L from "leaflet";
-import Papa from "papaparse";
 import "leaflet/dist/leaflet.css";
 
 const LAT_STEP = 2 / 69;
@@ -120,26 +119,29 @@ export default function MapComponent({ coords, reactions, pendingLocation, onLoc
 
   useEffect(() => {
     // Swap this for JSON fetch when it's ready
-    fetch("/colorado_mountains_2mi.csv")
+    fetch("https://mera3wkzuj.execute-api.us-west-2.amazonaws.com/request-redirector")
       .then(r => {
-        if (!r.ok) throw new Error(`Failed to fetch grid CSV: ${r.status}`);
-        return r.text();
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json() as Promise<GridCell[]>;
       })
-      .then(csv => {
-        const { data } = Papa.parse(csv, {
-          header: true,
-          dynamicTyping: true,
-          skipEmptyLines: true,
-        });
-        const valid = (data as GridCell[]).filter(
-          c => typeof c.lat === "number" && !isNaN(c.lat) &&
-               typeof c.lon === "number" && !isNaN(c.lon)
+      .then(json => {
+        const data: GridCell[] = json
+        .map((c) => ({
+          lat: Number(c.lat),
+          lon: Number(c.lon),
+          value: Number(c.value),
+        }))
+        .filter(
+          (c) =>
+            !Number.isNaN(c.lat) &&
+            !Number.isNaN(c.lon) &&
+            !Number.isNaN(c.value)
         );
-        setCells(valid);
-      })
-      .catch(err => console.error("Failed to load grid data:", err));
-  }, []);
 
+      setCells(data);
+    })
+    .catch((err) => console.error("Failed to load grid data:", err));
+  }, []);
   return (
     <MapContainer
       center={[39, -105.54]}
@@ -156,8 +158,8 @@ export default function MapComponent({ coords, reactions, pendingLocation, onLoc
         <Rectangle
           key={i}
           bounds={[
-            [cell.lat, cell.lon],
-            [cell.lat + LAT_STEP, cell.lon + LON_STEP],
+            [cell.lat - LAT_STEP / 2, cell.lon - LON_STEP / 2],
+            [cell.lat + LAT_STEP / 2, cell.lon + LON_STEP / 2],
           ]}
           renderer={canvasRenderer}
           pathOptions={{
