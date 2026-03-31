@@ -1,4 +1,6 @@
-scikit-learn>=1.5
+# Installed inside the SageMaker training/inference container.
+# boto3 and sagemaker are pre-installed in all SageMaker managed containers — do not add them here.
+scikit-learn==1.4.2
 pandas>=2.0
-numpy>=1.26
+numpy==1.26.4
 joblib>=1.3

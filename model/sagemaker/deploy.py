@@ -7,17 +7,22 @@ low-level boto3 API calls.
 Prerequisites
 -------------
 - AWS credentials configured (e.g. via ``aws configure`` or an IAM role)
-- An S3 bucket for training data and model artifacts
+- An S3 bucket for training data and model artifacts (default: explain-model-bucket-west2)
 - A SageMaker execution role ARN
 - ``sagemaker>=2,<3`` installed locally
 
 Usage
 -----
-    # Train
+    # Train (bucket defaults to explain-model-bucket-west2)
+    python deploy.py train \\
+        --role arn:aws:iam::029953330549:role/service-role/AmazonSageMakerAdminIAMExecutionRole\\
+        --data-s3 s3://explain-model-bucket-west2/caic_2016_2026/train.csv
+
+    # Train with a custom bucket override
     python deploy.py train \\
         --role arn:aws:iam::123456789012:role/SageMakerRole \\
-        --bucket my-bucket \\
-        --data-s3 s3://my-bucket/caic_2016_2026/train.csv
+        --bucket other-bucket \\
+        --data-s3 s3://other-bucket/caic_2016_2026/train.csv
 
     # Deploy endpoint from a completed training job
     python deploy.py deploy \\
@@ -28,6 +33,11 @@ Usage
     python deploy.py invoke \\
         --payload '{"elevation":3200,"slope":35,"aspect_degrees":120,
                     "snow_depth":120,"new_snow_24h":30,"temp":-5,"snow_ratio":4.0}'
+    python test_inference.py \
+    --bucket explain-model-bucket-west2 \
+    --key    models/pkl/avalanche-logistic-2026-03-31-19-51-23-039/logistic_avalanche.pkl \
+    --payload '{"elevation":3200,"slope":35,"aspect_degrees":180,"snow_depth":120,"new_snow_24h":30,"temp":-5,"snow_ratio":4.0}'
+
 """
 
 from __future__ import annotations
@@ -48,14 +58,16 @@ from sagemaker.sklearn import SKLearn
 # ── Constants ────────────────────────────────────────────────────────────────
 
 # scikit-learn framework version for the SageMaker managed container
-SKLEARN_VERSION = "1.2-1"
+SKLEARN_VERSION = "1.4-2"
 INSTANCE_TYPE_TRAIN = "ml.m5.large"
 INSTANCE_TYPE_DEPLOY = "ml.t2.medium"
 ENDPOINT_NAME = "avalanche-logistic"
 SOURCE_DIR = str(Path(__file__).resolve().parent)
 
+DEFAULT_BUCKET = "explain-model-bucket-west2"
+
 # Fallback region — override with --region or the AWS_DEFAULT_REGION env var
-DEFAULT_REGION = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+DEFAULT_REGION = os.environ.get("AWS_DEFAULT_REGION", "us-west-2")
 
 
 def _session(region: str) -> sagemaker.Session:
@@ -76,7 +88,7 @@ def _endpoint_exists(session: sagemaker.Session, endpoint_name: str) -> bool:
 # ── Training ─────────────────────────────────────────────────────────────────
 
 def run_training_job(
-    role: str, bucket: str, data_s3: str, region: str = DEFAULT_REGION,
+    role: str, data_s3: str, bucket: str = DEFAULT_BUCKET, region: str = DEFAULT_REGION,
 ) -> str:
     """Submit a SageMaker Training Job using the SKLearn estimator."""
     session = _session(region)
@@ -93,6 +105,7 @@ def run_training_job(
         base_job_name="avalanche-logistic",
         hyperparameters={
             "test-size": "0.2",
+            "bucket": bucket,
         },
     )
 
@@ -174,7 +187,7 @@ def main():
     # train
     t = sub.add_parser("train")
     t.add_argument("--role", required=True, help="SageMaker execution role ARN")
-    t.add_argument("--bucket", required=True, help="S3 bucket for artifacts")
+    t.add_argument("--bucket", default=DEFAULT_BUCKET, help=f"S3 bucket for artifacts (default: {DEFAULT_BUCKET})")
     t.add_argument("--data-s3", required=True, help="S3 URI to training CSV(s)")
 
     # deploy
@@ -191,7 +204,7 @@ def main():
     region = args.region
 
     if args.command == "train":
-        run_training_job(args.role, args.bucket, args.data_s3, region)
+        run_training_job(args.role, args.data_s3, args.bucket, region)
     elif args.command == "deploy":
         deploy_endpoint(args.role, args.training_job, region)
     elif args.command == "invoke":

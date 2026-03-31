@@ -14,6 +14,7 @@ import json
 import os
 from pathlib import Path
 
+import boto3
 import joblib
 import numpy as np
 import pandas as pd
@@ -74,7 +75,7 @@ def load_csvs(data_dir: str) -> pd.DataFrame:
 
 # ── Training ─────────────────────────────────────────────────────────────────
 
-def train(train_dir: str, model_dir: str, test_size: float = 0.2) -> None:
+def train(train_dir: str, model_dir: str, test_size: float = 0.2, bucket: str = "") -> None:
     # 1. Load & engineer
     df = load_csvs(train_dir)
     df = engineer_features(df)
@@ -172,6 +173,14 @@ def train(train_dir: str, model_dir: str, test_size: float = 0.2) -> None:
 
     print(f"\nModel saved to {model_path / MODEL_FILENAME}")
 
+    # Upload raw .pkl directly to S3 so colleagues can use it without unpacking tar.gz
+    if bucket:
+        training_env = json.loads(os.environ.get("SM_TRAINING_ENV", "{}"))
+        job_name = training_env.get("job_name", "unknown")
+        s3_key = f"models/pkl/{job_name}/{MODEL_FILENAME}"
+        boto3.client("s3").upload_file(str(model_path / MODEL_FILENAME), bucket, s3_key)
+        print(f"PKL uploaded to s3://{bucket}/{s3_key}")
+
 
 # ── CLI (SageMaker passes these automatically) ──────────────────────────────
 
@@ -180,6 +189,7 @@ if __name__ == "__main__":
     parser.add_argument("--train", type=str, default=os.environ.get("SM_CHANNEL_TRAIN", "/opt/ml/input/data/train"))
     parser.add_argument("--model-dir", type=str, default=os.environ.get("SM_MODEL_DIR", "/opt/ml/model"))
     parser.add_argument("--test-size", type=float, default=0.2)
+    parser.add_argument("--bucket", type=str, default="", help="S3 bucket to upload raw .pkl artifact")
     args = parser.parse_args()
 
-    train(args.train, args.model_dir, args.test_size)
+    train(args.train, args.model_dir, args.test_size, args.bucket)

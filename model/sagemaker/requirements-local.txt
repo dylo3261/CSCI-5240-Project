@@ -1,0 +1,15 @@
+# Local dev requirements for running deploy.py and test_inference.py.
+# Install with:  uv pip install -r requirements-local.txt
+#
+# DO NOT add these to requirements.txt — that file is uploaded to the
+# SageMaker container where boto3 and sagemaker are already pre-installed.
+
+# AWS
+boto3>=1.34
+sagemaker>=2,<3
+
+# ML — must match the SageMaker container (SKLEARN_VERSION = "1.4-2")
+scikit-learn==1.4.2
+numpy>=1.26,<2.0
+pandas>=2.0
+joblib>=1.3
