@@ -15,7 +15,7 @@ Grid defaults:
   - North/South: Colorado borders (41.0 / 37.0)
   - West: Colorado border (-109.0)
   - East: Denver (-104.9)
-  - Cell size: 5 miles (~0.072° lat × ~0.090° lon)
+  - Cell size: 2 miles (~0.029° lat × ~0.037° lon)
 """
 
 import json

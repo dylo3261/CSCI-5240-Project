@@ -1,0 +1,128 @@
+name: Deploy daily-overview-scores
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lambda/daily-overview-scores/**'
+      - '.github/workflows/deploy-daily-overview-scores.yml'
+
+env:
+  AWS_REGION: us-west-2
+  AWS_ACCOUNT_ID: '029953330549'
+  ECR_REPO: regional-risk-grid
+  FUNCTION_NAME: regional-risk-grid
+  ROLE_ARN: arn:aws:iam::029953330549:role/explainable-inference-role
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # required for OIDC
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Create ECR repository if needed
+        run: |
+          aws ecr create-repository \
+            --repository-name $ECR_REPO \
+            --region $AWS_REGION 2>/dev/null || echo "ECR repository already exists"
+
+      - name: Set up QEMU (arm64 cross-compilation)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image to ECR
+        env:
+          IMAGE_URI: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPO }}:latest
+        run: |
+          docker buildx build \
+            --platform linux/arm64 \
+            --provenance=false \
+            --push \
+            -t $IMAGE_URI \
+            lambda/daily-overview-scores/
+
+      - name: Create or update Lambda function
+        env:
+          IMAGE_URI: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPO }}:latest
+          ENV_VARS: >-
+            Variables={
+              MODEL_BUCKET=explain-model-bucket-west2,
+              DATA_BUCKET=daily-weather-data-csv-bucket,
+              OUTPUT_BUCKET=location-data-app-bucket,
+              OUTPUT_PREFIX=daily-grid-scores/
+            }
+        run: |
+          if aws lambda get-function --function-name $FUNCTION_NAME --region $AWS_REGION > /dev/null 2>&1; then
+            echo "Updating existing Lambda function..."
+            aws lambda update-function-code \
+              --function-name $FUNCTION_NAME \
+              --image-uri $IMAGE_URI \
+              --region $AWS_REGION
+
+            aws lambda wait function-updated-v2 \
+              --function-name $FUNCTION_NAME \
+              --region $AWS_REGION
+
+            aws lambda update-function-configuration \
+              --function-name $FUNCTION_NAME \
+              --timeout 900 \
+              --memory-size 2048 \
+              --environment "$ENV_VARS" \
+              --region $AWS_REGION
+          else
+            echo "Creating new Lambda function..."
+            aws lambda create-function \
+              --function-name $FUNCTION_NAME \
+              --package-type Image \
+              --code ImageUri=$IMAGE_URI \
+              --role $ROLE_ARN \
+              --timeout 900 \
+              --memory-size 2048 \
+              --architectures arm64 \
+              --environment "$ENV_VARS" \
+              --region $AWS_REGION
+          fi
+
+      - name: Wait for Lambda to become active
+        run: |
+          aws lambda wait function-active-v2 \
+            --function-name $FUNCTION_NAME \
+            --region $AWS_REGION
+
+      - name: Smoke test (10mi cell grid)
+        run: |
+          echo "Invoking Lambda with cell_size_mi=10 (expect ~30-60s runtime)..."
+
+          aws lambda invoke \
+            --function-name $FUNCTION_NAME \
+            --payload '{"cell_size_mi": 10}' \
+            --cli-binary-format raw-in-base64-out \
+            --region $AWS_REGION \
+            /tmp/grid_response.json
+
+          STATUS=$(python3 -c "import json,sys; d=json.load(open('/tmp/grid_response.json')); print(d.get('statusCode', 'error'))" 2>/dev/null || echo "error")
+          echo "Response statusCode: $STATUS"
+
+          if [ "$STATUS" != "200" ]; then
+            echo "Smoke test failed — response:"
+            cat /tmp/grid_response.json
+            exit 1
+          fi
+
+          echo "Smoke test passed"

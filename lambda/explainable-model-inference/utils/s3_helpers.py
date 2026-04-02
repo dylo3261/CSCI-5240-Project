@@ -15,8 +15,8 @@ S3_DEM_KEY = os.environ.get("DEM_KEY", "data/colorado_dem.tif")
 
 # Data bucket (your teammate's cron job bucket — already exists)
 DATA_BUCKET = os.environ.get("DATA_BUCKET", "daily-weather-data-csv-bucket")
-S3_DAILY_STATION_KEY = "daily_station_data.csv"
-S3_STATIONS_KEY = "snotel_stations_const.csv"
+S3_DAILY_STATION_KEY = "latest/daily_station_data.csv"
+S3_STATIONS_KEY = "constant/snotel_stations_const.csv"
 
 # Lambda environment detection (same as teammate's pattern)
 IS_LAMBDA = os.environ.get("AWS_EXECUTION_ENV", "").startswith("AWS_Lambda")

@@ -1,0 +1,86 @@
+name: Deploy explainable-inference
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lambda/explainable-model-inference/**'
+      - '.github/workflows/deploy-explainable-inference.yml'
+
+env:
+  AWS_REGION: us-west-2
+  AWS_ACCOUNT_ID: '029953330549'
+  ECR_REPO: explainable-inference
+  FUNCTION_NAME: explainable-inference
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # required for OIDC
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up QEMU (arm64 cross-compilation)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image to ECR
+        env:
+          IMAGE_URI: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPO }}:latest
+        run: |
+          docker buildx build \
+            --platform linux/arm64 \
+            --provenance=false \
+            --push \
+            -t $IMAGE_URI \
+            lambda/explainable-model-inference/
+
+      - name: Update Lambda function code
+        env:
+          IMAGE_URI: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPO }}:latest
+        run: |
+          aws lambda update-function-code \
+            --function-name $FUNCTION_NAME \
+            --image-uri $IMAGE_URI \
+            --region $AWS_REGION
+
+      - name: Wait for update to complete
+        run: |
+          aws lambda wait function-updated \
+            --function-name $FUNCTION_NAME \
+            --region $AWS_REGION
+
+      - name: Smoke test
+        run: |
+          aws lambda invoke \
+            --function-name $FUNCTION_NAME \
+            --payload '{"latitude": 39.6, "longitude": -105.8}' \
+            --cli-binary-format raw-in-base64-out \
+            --region $AWS_REGION \
+            /tmp/response.json
+
+          STATUS=$(python3 -c "import json,sys; d=json.load(open('/tmp/response.json')); print(d.get('statusCode', 'error'))")
+          echo "Response statusCode: $STATUS"
+
+          if [ "$STATUS" != "200" ]; then
+            echo "Smoke test failed — response:"
+            cat /tmp/response.json
+            exit 1
+          fi
+
+          echo "Smoke test passed"
