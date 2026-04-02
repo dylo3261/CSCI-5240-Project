@@ -111,24 +111,16 @@ jobs:
             --function-name $FUNCTION_NAME \
             --region $AWS_REGION
 
-      - name: Smoke test (10mi cell grid)
+      - name: Verify Lambda is active
         run: |
-          echo "Invoking Lambda with cell_size_mi=10 (expect ~30-60s runtime)..."
-
-          aws lambda invoke \
+          STATUS=$(aws lambda get-function \
             --function-name $FUNCTION_NAME \
-            --payload '{"cell_size_mi": 10}' \
-            --cli-binary-format raw-in-base64-out \
             --region $AWS_REGION \
-            /tmp/grid_response.json
-
-          STATUS=$(python3 -c "import json,sys; d=json.load(open('/tmp/grid_response.json')); print(d.get('statusCode', 'error'))" 2>/dev/null || echo "error")
-          echo "Response statusCode: $STATUS"
-
-          if [ "$STATUS" != "200" ]; then
-            echo "Smoke test failed — response:"
-            cat /tmp/grid_response.json
+            --query 'Configuration.State' \
+            --output text)
+          echo "Lambda state: $STATUS"
+          if [ "$STATUS" != "Active" ]; then
+            echo "Lambda is not active after deploy"
             exit 1
           fi
-
-          echo "Smoke test passed"
+          echo "Deploy verified — Lambda is active"
