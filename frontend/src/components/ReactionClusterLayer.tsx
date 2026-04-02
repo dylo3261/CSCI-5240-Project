@@ -37,14 +37,14 @@ function makeIcon(emoji: string): L.DivIcon {
 }
 
 const reactionIcons: Record<ReactionType, L.DivIcon> = {
-  icy:        makeIcon("❄️"),
-  powder:     makeIcon("⛷️"),
-  bluebird:   makeIcon("☀️"),
-  crowded:    makeIcon("👥"),
+  icy: makeIcon("❄️"),
+  powder: makeIcon("⛷️"),
+  bluebird: makeIcon("☀️"),
+  crowded: makeIcon("👥"),
   heavy_snow: makeIcon("🌨️"),
-  foggy:      makeIcon("🌫️"),
-  sketchy:    makeIcon("⚠️"),
-  avalanche:  makeIcon("🏔️"),
+  foggy: makeIcon("🌫️"),
+  sketchy: makeIcon("⚠️"),
+  avalanche: makeIcon("🏔️"),
 };
 
 const fallbackIcon = L.divIcon({
@@ -75,13 +75,15 @@ function buildPopup(r: ReactionMarker): HTMLElement {
   root.appendChild(emoji);
 
   const label = document.createElement("div");
-  label.style.cssText = "font-weight:700;font-size:13px;color:#111;margin-bottom:6px";
+  label.style.cssText =
+    "font-weight:700;font-size:13px;color:#111;margin-bottom:6px";
   label.textContent = REACTION_LABEL[r.reactionType] ?? r.reactionType;
   root.appendChild(label);
 
   if (r.message) {
     const msg = document.createElement("div");
-    msg.style.cssText = "font-size:13px;color:#333;line-height:1.5;margin-bottom:8px";
+    msg.style.cssText =
+      "font-size:13px;color:#333;line-height:1.5;margin-bottom:8px";
     msg.textContent = r.message;
     root.appendChild(msg);
   }
@@ -103,7 +105,7 @@ export default function ReactionClusterLayer({ reactions }: Props) {
 
   useEffect(() => {
     const clusterGroup = L.markerClusterGroup({
-      maxClusterRadius: 50,
+      maxClusterRadius: 25,
       spiderfyOnMaxZoom: true,
       showCoverageOnHover: false,
       zoomToBoundsOnClick: true,
@@ -137,7 +139,9 @@ export default function ReactionClusterLayer({ reactions }: Props) {
     });
 
     map.addLayer(clusterGroup);
-    return () => { map.removeLayer(clusterGroup); };
+    return () => {
+      map.removeLayer(clusterGroup);
+    };
   }, [reactions, map]);
 
   return null;
