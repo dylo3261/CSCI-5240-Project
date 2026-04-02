@@ -76,6 +76,15 @@ const reactionIcons: Record<ReactionType, L.DivIcon> = {
   avalanche: makeIcon("avalanche"),
 };
 
+// Fallback used when a reaction arrives with an unrecognized type. Keeps the
+// marker renderable so Leaflet never receives `undefined` as an icon prop.
+const fallbackReactionIcon = L.divIcon({
+  html: `<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.7));">📌</div>`,
+  className: "",
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+});
+
 const pendingLocationIcon = L.divIcon({
   html: `<div style="font-size:24px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));">📍</div>`,
   className: "",
@@ -219,6 +228,34 @@ export default function MapComponent({ coords, reactions, pendingLocation, onLoc
           onClose={() => setCardDismissed(true)}
         />
       )}
-    </div>
+      {reactions.map(r => {
+        const icon = reactionIcons[r.reactionType] ?? fallbackReactionIcon;
+        return (
+        <Marker
+          key={r.reactionId}
+          position={[r.latitude, r.longitude]}
+          icon={icon}
+          eventHandlers={{ click: (e) => e.originalEvent.stopPropagation() }}
+        >
+          <Popup>
+            <div style={{ minWidth: 160, fontFamily: "sans-serif" }}>
+              <div style={{ fontSize: 28, lineHeight: 1, marginBottom: 6 }}>
+                {REACTION_EMOJI[r.reactionType]}
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: "#111", marginBottom: 6 }}>
+                {REACTION_LABEL[r.reactionType]}
+              </div>
+              <div style={{ fontSize: 13, color: "#333", lineHeight: 1.5, marginBottom: 8 }}>
+                {r.message}
+              </div>
+              <div style={{ fontSize: 11, color: "#888" }}>
+                {formatTimestamp(r.timestamp)}
+              </div>
+            </div>
+          </Popup>
+        </Marker>
+        );
+      })}
+    </MapContainer>
   );
 }
