@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Rectangle, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Rectangle,
+  Marker,
+  Popup,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import ExplainabilityCard from "./ExplainabilityCard";
@@ -11,7 +19,15 @@ const canvasRenderer = L.canvas({ padding: 0.5 });
 
 const getColor = (v: number) => `hsl(${(1 - v) * 240}, 90%, 50%)`;
 
-export type ReactionType = "icy" | "powder" | "bluebird" | "crowded" | "heavy_snow" | "foggy" | "sketchy" | "avalanche";
+export type ReactionType =
+  | "icy"
+  | "powder"
+  | "bluebird"
+  | "crowded"
+  | "heavy_snow"
+  | "foggy"
+  | "sketchy"
+  | "avalanche";
 
 export interface ReactionMarker {
   reactionId: string;
@@ -115,7 +131,11 @@ function FlyTo({ coords }: { coords: { lat: number; lng: number } | null }) {
   return null;
 }
 
-function LocationSelector({ onLocationSelect }: { onLocationSelect: (lat: number, lng: number) => void }) {
+function LocationSelector({
+  onLocationSelect,
+}: {
+  onLocationSelect: (lat: number, lng: number) => void;
+}) {
   useMapEvents({
     click(e) {
       onLocationSelect(e.latlng.lat, e.latlng.lng);
@@ -124,24 +144,30 @@ function LocationSelector({ onLocationSelect }: { onLocationSelect: (lat: number
   return null;
 }
 
-export default function MapComponent({ coords, reactions, pendingLocation, onLocationSelect }: Props) {
+export default function MapComponent({
+  coords,
+  reactions,
+  pendingLocation,
+  onLocationSelect,
+}: Props) {
   const [cells, setCells] = useState<GridCell[]>([]);
-  // Track whether the explainability card is dismissed for the current pin
-  const [cardDismissed, setCardDismissed] = useState(false);
+  // Track which selected location has been dismissed so a new pin re-shows the card
+  const [dismissedLocationKey, setDismissedLocationKey] = useState("");
+  const pendingLocationKey = pendingLocation
+    ? `${pendingLocation.lat},${pendingLocation.lng}`
+    : null;
+  const cardDismissed =
+    pendingLocationKey !== null && dismissedLocationKey === pendingLocationKey;
 
-  // Re-show card whenever a new location is selected
-  const prevLocation = pendingLocation;
   useEffect(() => {
-    setCardDismissed(false);
-  }, [pendingLocation?.lat, pendingLocation?.lng]);
-
-  useEffect(() => {
-    fetch("https://mera3wkzuj.execute-api.us-west-2.amazonaws.com/request-redirector")
-      .then(r => {
+    fetch(
+      "https://mera3wkzuj.execute-api.us-west-2.amazonaws.com/request-redirector",
+    )
+      .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json() as Promise<GridCell[]>;
       })
-      .then(json => {
+      .then((json) => {
         const data: GridCell[] = json
           .map((c) => ({
             lat: Number(c.lat),
@@ -152,7 +178,7 @@ export default function MapComponent({ coords, reactions, pendingLocation, onLoc
             (c) =>
               !Number.isNaN(c.lat) &&
               !Number.isNaN(c.lon) &&
-              !Number.isNaN(c.value)
+              !Number.isNaN(c.value),
           );
         setCells(data);
       })
@@ -194,68 +220,63 @@ export default function MapComponent({ coords, reactions, pendingLocation, onLoc
             icon={pendingLocationIcon}
           />
         )}
-        {reactions.filter(r => reactionIcons[r.reactionType]).map(r => (
-          <Marker
-            key={r.reactionId}
-            position={[r.latitude, r.longitude]}
-            icon={reactionIcons[r.reactionType]}
-            eventHandlers={{ click: (e) => e.originalEvent.stopPropagation() }}
-          >
-            <Popup>
-              <div style={{ minWidth: 160, fontFamily: "sans-serif" }}>
-                <div style={{ fontSize: 28, lineHeight: 1, marginBottom: 6 }}>
-                  {REACTION_EMOJI[r.reactionType]}
-                </div>
-                <div style={{ fontWeight: 700, fontSize: 13, color: "#111", marginBottom: 6 }}>
-                  {REACTION_LABEL[r.reactionType]}
-                </div>
-                <div style={{ fontSize: 13, color: "#333", lineHeight: 1.5, marginBottom: 8 }}>
-                  {r.message}
-                </div>
-                <div style={{ fontSize: 11, color: "#888" }}>
-                  {formatTimestamp(r.timestamp)}
-                </div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
 
-      {/* Explainability card — overlays the map, dismissible per pin */}
+        {/* --- MOVED THE REACTION LOOP INSIDE THE MAP CONTAINER --- */}
+        {reactions.map((r) => {
+          const icon = reactionIcons[r.reactionType] ?? fallbackReactionIcon;
+          return (
+            <Marker
+              key={r.reactionId}
+              position={[r.latitude, r.longitude]}
+              icon={icon}
+              eventHandlers={{
+                click: (e) => e.originalEvent.stopPropagation(),
+              }}
+            >
+              <Popup>
+                <div style={{ minWidth: 160, fontFamily: "sans-serif" }}>
+                  <div style={{ fontSize: 28, lineHeight: 1, marginBottom: 6 }}>
+                    {REACTION_EMOJI[r.reactionType]}
+                  </div>
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: 13,
+                      color: "#111",
+                      marginBottom: 6,
+                    }}
+                  >
+                    {REACTION_LABEL[r.reactionType]}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: "#333",
+                      lineHeight: 1.5,
+                      marginBottom: 8,
+                    }}
+                  >
+                    {r.message}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#888" }}>
+                    {formatTimestamp(r.timestamp)}
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
+      </MapContainer>{" "}
       {!cardDismissed && (
         <ExplainabilityCard
           location={pendingLocation}
-          onClose={() => setCardDismissed(true)}
+          onClose={() => {
+            if (pendingLocationKey !== null) {
+              setDismissedLocationKey(pendingLocationKey);
+            }
+          }}
         />
       )}
-      {reactions.map(r => {
-        const icon = reactionIcons[r.reactionType] ?? fallbackReactionIcon;
-        return (
-        <Marker
-          key={r.reactionId}
-          position={[r.latitude, r.longitude]}
-          icon={icon}
-          eventHandlers={{ click: (e) => e.originalEvent.stopPropagation() }}
-        >
-          <Popup>
-            <div style={{ minWidth: 160, fontFamily: "sans-serif" }}>
-              <div style={{ fontSize: 28, lineHeight: 1, marginBottom: 6 }}>
-                {REACTION_EMOJI[r.reactionType]}
-              </div>
-              <div style={{ fontWeight: 700, fontSize: 13, color: "#111", marginBottom: 6 }}>
-                {REACTION_LABEL[r.reactionType]}
-              </div>
-              <div style={{ fontSize: 13, color: "#333", lineHeight: 1.5, marginBottom: 8 }}>
-                {r.message}
-              </div>
-              <div style={{ fontSize: 11, color: "#888" }}>
-                {formatTimestamp(r.timestamp)}
-              </div>
-            </div>
-          </Popup>
-        </Marker>
-        );
-      })}
-    </MapContainer>
+    </div>
   );
 }
