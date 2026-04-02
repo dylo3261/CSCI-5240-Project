@@ -57,6 +57,12 @@ jobs:
             -t $IMAGE_URI \
             lambda/daily-overview-scores/
 
+      - name: Refresh AWS credentials after long Docker build
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Create or update Lambda function
         env:
           IMAGE_URI: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPO }}:latest
