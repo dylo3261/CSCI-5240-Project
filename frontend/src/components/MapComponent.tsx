@@ -15,6 +15,13 @@ import ReactionClusterLayer from "./ReactionClusterLayer";
 const LAT_STEP = 2 / 69;
 const LON_STEP = 2 / 53;
 
+// Exact Colorado state boundary corners (DMS → decimal degrees)
+const COLORADO_BOUNDS: L.LatLngBoundsLiteral = [
+  [36.9989, -109.0452], // SW — Four Corners Monument
+  [41.0, -102.0467], // NE corner
+];
+const MIN_ZOOM = 6;
+
 const canvasRenderer = L.canvas({ padding: 0.5 });
 
 const getColor = (v: number) => `hsl(${(1 - v) * 240}, 90%, 50%)`;
@@ -39,7 +46,6 @@ export interface ReactionMarker {
   longitude: number;
   userId?: string;
 }
-
 
 const pendingLocationIcon = L.divIcon({
   html: `<div style="font-size:24px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));">📍</div>`,
@@ -131,6 +137,9 @@ export default function MapComponent({
       <MapContainer
         center={[39, -105.54]}
         zoom={7}
+        minZoom={MIN_ZOOM}
+        maxBounds={COLORADO_BOUNDS}
+        maxBoundsViscosity={0.8}
         style={{ height: "100%", width: "100%" }}
       >
         <TileLayer
