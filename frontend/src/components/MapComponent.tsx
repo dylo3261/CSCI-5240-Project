@@ -4,13 +4,13 @@ import {
   TileLayer,
   Rectangle,
   Marker,
-  Popup,
   useMap,
   useMapEvents,
 } from "react-leaflet";
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import ExplainabilityCard from "./ExplainabilityCard";
+import ReactionClusterLayer from "./ReactionClusterLayer";
 
 const LAT_STEP = 2 / 69;
 const LON_STEP = 2 / 53;
@@ -34,72 +34,12 @@ export interface ReactionMarker {
   dataType: string;
   timestamp: string;
   reactionType: ReactionType;
-  message: string;
+  message?: string;
   latitude: number;
   longitude: number;
-  userId: string;
+  userId?: string;
 }
 
-const REACTION_EMOJI: Record<ReactionType, string> = {
-  icy: "❄️",
-  powder: "⛷️",
-  bluebird: "☀️",
-  crowded: "👥",
-  heavy_snow: "🌨️",
-  foggy: "🌫️",
-  sketchy: "⚠️",
-  avalanche: "🏔️",
-};
-
-const REACTION_LABEL: Record<ReactionType, string> = {
-  icy: "Icy",
-  powder: "Powder",
-  bluebird: "Bluebird",
-  crowded: "Crowded",
-  heavy_snow: "Heavy Snow",
-  foggy: "Foggy",
-  sketchy: "Sketchy",
-  avalanche: "Avalanche",
-};
-
-function formatTimestamp(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
-function makeIcon(type: ReactionType): L.DivIcon {
-  return L.divIcon({
-    html: `<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.7));">${REACTION_EMOJI[type]}</div>`,
-    className: "",
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
-  });
-}
-
-const reactionIcons: Record<ReactionType, L.DivIcon> = {
-  icy: makeIcon("icy"),
-  powder: makeIcon("powder"),
-  bluebird: makeIcon("bluebird"),
-  crowded: makeIcon("crowded"),
-  heavy_snow: makeIcon("heavy_snow"),
-  foggy: makeIcon("foggy"),
-  sketchy: makeIcon("sketchy"),
-  avalanche: makeIcon("avalanche"),
-};
-
-// Fallback used when a reaction arrives with an unrecognized type. Keeps the
-// marker renderable so Leaflet never receives `undefined` as an icon prop.
-const fallbackReactionIcon = L.divIcon({
-  html: `<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.7));">📌</div>`,
-  className: "",
-  iconSize: [26, 26],
-  iconAnchor: [13, 13],
-});
 
 const pendingLocationIcon = L.divIcon({
   html: `<div style="font-size:24px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));">📍</div>`,
@@ -221,51 +161,7 @@ export default function MapComponent({
           />
         )}
 
-        {/* --- MOVED THE REACTION LOOP INSIDE THE MAP CONTAINER --- */}
-        {reactions.map((r) => {
-          const icon = reactionIcons[r.reactionType] ?? fallbackReactionIcon;
-          return (
-            <Marker
-              key={r.reactionId}
-              position={[r.latitude, r.longitude]}
-              icon={icon}
-              eventHandlers={{
-                click: (e) => e.originalEvent.stopPropagation(),
-              }}
-            >
-              <Popup>
-                <div style={{ minWidth: 160, fontFamily: "sans-serif" }}>
-                  <div style={{ fontSize: 28, lineHeight: 1, marginBottom: 6 }}>
-                    {REACTION_EMOJI[r.reactionType]}
-                  </div>
-                  <div
-                    style={{
-                      fontWeight: 700,
-                      fontSize: 13,
-                      color: "#111",
-                      marginBottom: 6,
-                    }}
-                  >
-                    {REACTION_LABEL[r.reactionType]}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 13,
-                      color: "#333",
-                      lineHeight: 1.5,
-                      marginBottom: 8,
-                    }}
-                  >
-                    {r.message}
-                  </div>
-                  <div style={{ fontSize: 11, color: "#888" }}>
-                    {formatTimestamp(r.timestamp)}
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
+        <ReactionClusterLayer reactions={reactions} />
       </MapContainer>{" "}
       {!cardDismissed && (
         <ExplainabilityCard

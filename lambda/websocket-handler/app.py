@@ -3,6 +3,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
+import time
 
 import boto3
 from botocore.exceptions import ClientError
@@ -47,7 +48,7 @@ def _disconnect(connection_id):
 def _send_reaction(event, sender_connection_id):
     body = json.loads(event.get("body") or "{}")
 
-    required = ("reactionType", "message", "latitude", "longitude", "userId")
+    required = ("reactionType", "latitude", "longitude")
     missing = [f for f in required if body.get(f) is None]
     if missing:
         return {"statusCode": 400, "body": f"Missing required fields: {', '.join(missing)}"}
@@ -57,6 +58,7 @@ def _send_reaction(event, sender_connection_id):
 
     reaction_id = str(uuid.uuid4())
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    user_id = body.get("userId") or None
 
     # DynamoDB rejects float — use Decimal(str(...)) to avoid precision artifacts
     item = {
@@ -64,11 +66,16 @@ def _send_reaction(event, sender_connection_id):
         "dataType":     "REACTION",
         "timestamp":    timestamp,
         "reactionType": body["reactionType"],
-        "message":      body["message"],
+        "message":      body.get("message", ""),
         "latitude":     Decimal(str(body["latitude"])),
         "longitude":    Decimal(str(body["longitude"])),
-        "userId":       body["userId"],
     }
+
+    if user_id:
+        item["userId"] = user_id
+    else:
+        # Anonymous reactions expire after 24 hours via DynamoDB TTL
+        item["ttl"] = int(time.time()) + 86400
 
     reactions_table.put_item(Item=item)
 
@@ -78,11 +85,13 @@ def _send_reaction(event, sender_connection_id):
         "dataType":     "REACTION",
         "timestamp":    timestamp,
         "reactionType": body["reactionType"],
-        "message":      body["message"],
+        "message":      body.get("message", ""),
         "latitude":     body["latitude"],
         "longitude":    body["longitude"],
-        "userId":       body["userId"],
     }
+
+    if user_id:
+        broadcast["userId"] = user_id
 
     apigw = boto3.client("apigatewaymanagementapi", endpoint_url=WEBSOCKET_ENDPOINT)
     message = json.dumps(broadcast).encode("utf-8")

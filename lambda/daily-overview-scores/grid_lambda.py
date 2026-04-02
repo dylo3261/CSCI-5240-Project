@@ -285,17 +285,35 @@ def _predict_single(
         py, px = rowcol(transform, lon, lat)
 
         if py < 1 or py >= height - 1 or px < 1 or px >= width - 1:
-            return None
+            return {
+                "lat": round(float(lat), 4),
+                "lon": round(float(lon), 4),
+                "prediction": 0.0,
+                "risk_level": "LOW",
+                "elevation": 0.0,
+            }
 
         elevation = float(elevation_data[py, px])
         if elevation == nodata or elevation < -999:
-            return None
+            return {
+                "lat": round(float(lat), 4),
+                "lon": round(float(lon), 4),
+                "prediction": 0.0,
+                "risk_level": "LOW",
+                "elevation": 0.0,
+            }
 
         slope, aspect_deg = calculate_slope_aspect(
             elevation_data, transform, py, px, lat
         )
         if slope is None:
-            return None
+            return {
+                "lat": round(float(lat), 4),
+                "lon": round(float(lon), 4),
+                "prediction": 0.0,
+                "risk_level": "LOW",
+                "elevation": 0.0,
+            }
 
         # ── Weather (fast: vectorized distance calc) ─────────────────────
         distances = np.array([
@@ -326,7 +344,13 @@ def _predict_single(
                 valid_dists.append(dist)
 
         if not valid_dists:
-            return None
+            return {
+                "lat": round(float(lat), 4),
+                "lon": round(float(lon), 4),
+                "prediction": 0.0,
+                "risk_level": "LOW",
+                "elevation": round(elevation, 0),
+            }
 
         weather = {
             "snow_depth": inverse_distance_weighting(snow_depths, valid_dists),
@@ -336,7 +360,13 @@ def _predict_single(
         }
 
         if any(v is None for v in weather.values()):
-            return None
+            return {
+                "lat": round(float(lat), 4),
+                "lon": round(float(lon), 4),
+                "prediction": 0.0,
+                "risk_level": "LOW",
+                "elevation": round(elevation, 0),
+            }
 
         # ── Predict ──────────────────────────────────────────────────────
         features = {

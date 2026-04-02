@@ -31,7 +31,7 @@ interface SidebarProps {
   isLoggedIn: boolean;
 }
 
-export default function Sidebar({ onSubmit, sendReaction, pendingLocation, isLoggedIn }: SidebarProps) {
+export default function Sidebar({ onSubmit, sendReaction, pendingLocation }: SidebarProps) {
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [selectedType, setSelectedType] = useState<ReactionType | null>(null);
@@ -68,7 +68,7 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation, isLog
     setMessage("");
   };
 
-  const canPost = selectedType !== null && pendingLocation !== null && message.trim().length > 0;
+  const canPost = selectedType !== null && pendingLocation !== null;
 
   const inputSx = {
     "& .MuiOutlinedInput-root": {
@@ -105,127 +105,97 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation, isLog
           Click the map to select a location, then drop a reaction below.
         </Typography>
 
-        {!isLoggedIn ? (
-          <Box sx={{
-            bgcolor: "rgba(255,255,255,0.03)",
-            border: "1px solid rgba(255,255,255,0.06)",
-            borderRadius: 2,
-            p: 2,
-            textAlign: "center",
-          }}>
-            <Typography variant="body2" color="rgba(255,255,255,0.6)" mb={2}>
-              You need an account to drop reactions on the map.
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+
+          {/* Pinned location indicator - moved up for logical flow */}
+          <Box sx={{ bgcolor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 2, p: 1.5 }}>
+            <Typography variant="caption" color="rgba(255,255,255,0.4)" display="block" mb={0.5} textTransform="uppercase" letterSpacing={0.5} fontSize={10}>
+              Selected Location
             </Typography>
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={() => window.location.href = "/account"}
-              sx={{
-                textTransform: "none",
-                fontWeight: 600,
-                fontSize: 14,
-                py: 1,
-                borderRadius: 2,
-                bgcolor: "#1565c0",
-                "&:hover": { bgcolor: "#1976d2" },
-              }}
-            >
-              Sign In
-            </Button>
-          </Box>
-        ) : (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-
-            {/* Pinned location indicator - moved up for logical flow */}
-            <Box sx={{ bgcolor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 2, p: 1.5 }}>
-              <Typography variant="caption" color="rgba(255,255,255,0.4)" display="block" mb={0.5} textTransform="uppercase" letterSpacing={0.5} fontSize={10}>
-                Selected Location
+            {pendingLocation ? (
+              <Typography variant="body2" color="#fff" fontFamily="monospace" fontWeight={500}>
+                {pendingLocation.lat.toFixed(4)}, {pendingLocation.lng.toFixed(4)}
               </Typography>
-              {pendingLocation ? (
-                <Typography variant="body2" color="#fff" fontFamily="monospace" fontWeight={500}>
-                  {pendingLocation.lat.toFixed(4)}, {pendingLocation.lng.toFixed(4)}
-                </Typography>
-              ) : (
-                <Typography variant="body2" color="rgba(255,255,255,0.4)" fontStyle="italic">
-                  No location selected
-                </Typography>
-              )}
-            </Box>
-
-            {/* Emoji type selector using CSS Grid */}
-            <Box sx={{ 
-              display: "grid", 
-              gridTemplateColumns: "1fr 1fr", 
-              gap: 1.25 
-            }}>
-              {REACTIONS.map(({ type, emoji, label }) => (
-                <Button
-                  key={type}
-                  variant="outlined"
-                  onClick={() => setSelectedType(prev => prev === type ? null : type)}
-                  sx={{
-                    flexDirection: "column",
-                    textTransform: "none",
-                    fontSize: 12,
-                    p: 1.5,
-                    lineHeight: 1.2,
-                    gap: 0.5,
-                    borderRadius: 2,
-                    borderColor: selectedType === type
-                      ? "rgba(255,255,255,0.8)"
-                      : "rgba(255,255,255,0.12)",
-                    color: selectedType === type ? "#fff" : "rgba(255,255,255,0.6)",
-                    bgcolor: selectedType === type ? "rgba(255,255,255,0.1)" : "transparent",
-                    transition: "all 0.2s ease-in-out",
-                    "&:hover": {
-                      borderColor: "rgba(255,255,255,0.5)",
-                      bgcolor: "rgba(255,255,255,0.06)",
-                    },
-                  }}
-                >
-                  <span style={{ fontSize: 20 }}>{emoji}</span>
-                  {label}
-                </Button>
-              ))}
-            </Box>
-
-            {/* Message input */}
-            <TextField
-              label="Message"
-              placeholder="What's it like out there?"
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              size="small"
-              fullWidth
-              multiline
-              rows={2}
-              sx={inputSx}
-            />
-
-            {/* Post button */}
-            <Button
-              variant="contained"
-              fullWidth
-              disabled={!canPost}
-              onClick={handlePost}
-              sx={{
-                textTransform: "none",
-                fontWeight: 600,
-                fontSize: 14,
-                py: 1.25,
-                borderRadius: 2,
-                bgcolor: "#1565c0",
-                "&:hover": { bgcolor: "#1976d2" },
-                "&.Mui-disabled": {
-                  bgcolor: "rgba(255,255,255,0.05)",
-                  color: "rgba(255,255,255,0.2)",
-                },
-              }}
-            >
-              Post Reaction
-            </Button>
+            ) : (
+              <Typography variant="body2" color="rgba(255,255,255,0.4)" fontStyle="italic">
+                No location selected
+              </Typography>
+            )}
           </Box>
-        )}
+
+          {/* Emoji type selector using CSS Grid */}
+          <Box sx={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 1.25
+          }}>
+            {REACTIONS.map(({ type, emoji, label }) => (
+              <Button
+                key={type}
+                variant="outlined"
+                onClick={() => setSelectedType(prev => prev === type ? null : type)}
+                sx={{
+                  flexDirection: "column",
+                  textTransform: "none",
+                  fontSize: 12,
+                  p: 1.5,
+                  lineHeight: 1.2,
+                  gap: 0.5,
+                  borderRadius: 2,
+                  borderColor: selectedType === type
+                    ? "rgba(255,255,255,0.8)"
+                    : "rgba(255,255,255,0.12)",
+                  color: selectedType === type ? "#fff" : "rgba(255,255,255,0.6)",
+                  bgcolor: selectedType === type ? "rgba(255,255,255,0.1)" : "transparent",
+                  transition: "all 0.2s ease-in-out",
+                  "&:hover": {
+                    borderColor: "rgba(255,255,255,0.5)",
+                    bgcolor: "rgba(255,255,255,0.06)",
+                  },
+                }}
+              >
+                <span style={{ fontSize: 20 }}>{emoji}</span>
+                {label}
+              </Button>
+            ))}
+          </Box>
+
+          {/* Message input */}
+          <TextField
+            label="Message (optional)"
+            placeholder="What's it like out there?"
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            size="small"
+            fullWidth
+            multiline
+            rows={2}
+            sx={inputSx}
+          />
+
+          {/* Post button */}
+          <Button
+            variant="contained"
+            fullWidth
+            disabled={!canPost}
+            onClick={handlePost}
+            sx={{
+              textTransform: "none",
+              fontWeight: 600,
+              fontSize: 14,
+              py: 1.25,
+              borderRadius: 2,
+              bgcolor: "#1565c0",
+              "&:hover": { bgcolor: "#1976d2" },
+              "&.Mui-disabled": {
+                bgcolor: "rgba(255,255,255,0.05)",
+                color: "rgba(255,255,255,0.2)",
+              },
+            }}
+          >
+            Post Reaction
+          </Button>
+        </Box>
       </Box>
 
       <Divider sx={{ borderColor: "rgba(255,255,255,0.08)" }} />
