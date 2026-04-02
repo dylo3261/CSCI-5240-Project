@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from utils.s3_helpers import (
     IS_LAMBDA, S3_DAILY_STATION_KEY, S3_STATIONS_KEY,
-    download_from_s3, upload_to_s3,
+    download_from_s3, upload_to_s3, copy_s3_object, s3_archive_key,
 )
 from utils.weather_utils import get_station_weather
 
@@ -17,6 +17,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = "/tmp/data" if IS_LAMBDA else os.path.join(BASE_DIR, "data")
 DAILY_STATION_FILE = os.path.join(DATA_DIR, "daily_station_data.csv")
 STATIONS_FILE = os.path.join(DATA_DIR, "snotel_stations_const.csv")
+
+# Archive filename (just the basename, used to build S3 keys)
+DAILY_STATION_BASENAME = "daily_station_data.csv"
 
 
 def fetch_station_day(station_triplet: str, date: datetime) -> dict:
@@ -80,103 +83,128 @@ def _build_rows_for_date(stations_df: pd.DataFrame, date: datetime,
     return rows
 
 
-def _load_existing() -> pd.DataFrame:
-    """Load the existing daily_station_data.csv or return empty DataFrame."""
-    if os.path.exists(DAILY_STATION_FILE):
-        df = pd.read_csv(DAILY_STATION_FILE)
-        df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
+def _load_csv(path: str) -> pd.DataFrame:
+    """Load a CSV or return empty DataFrame if not found."""
+    if os.path.exists(path):
+        df = pd.read_csv(path)
+        if "date" in df.columns:
+            df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
         return df
     return pd.DataFrame()
 
 
-def _get_yesterday_depths(existing_df: pd.DataFrame, yesterday_str: str) -> dict | None:
+def _get_yesterday_depths(df: pd.DataFrame, yesterday_str: str) -> dict | None:
     """
-    Extract a {station_id: snow_depth} mapping from existing data for a given date.
+    Extract a {station_id: snow_depth} mapping from a DataFrame for a given date.
     Returns None if no data exists for that date.
     """
-    if existing_df.empty:
+    if df.empty:
         return None
-    day_rows = existing_df[existing_df["date"] == yesterday_str]
+    day_rows = df[df["date"] == yesterday_str]
     if day_rows.empty:
         return None
     return dict(zip(day_rows["station_id"], day_rows["snow_depth"]))
 
 
-def _merge_and_save(existing_df: pd.DataFrame, new_rows: list[dict],
-                    upload: bool = False) -> pd.DataFrame:
-    """Append new rows, deduplicate (date + station_id), sort, and save."""
-    new_df = pd.DataFrame(new_rows)
-    if not existing_df.empty:
-        combined = pd.concat([existing_df, new_df], ignore_index=True)
-    else:
-        combined = new_df
-
-    combined.drop_duplicates(subset=["date", "station_id"], keep="last", inplace=True)
-    combined.dropna(subset=["snow_depth", "swe", "temp"], inplace=True)
-    float_cols = combined.select_dtypes(include="number").columns
-    combined[float_cols] = combined[float_cols].round(3)
-    combined.sort_values(["date", "station_id"], ascending=[False, True], inplace=True)
-    combined.reset_index(drop=True, inplace=True)
+def _save_single_day(rows: list[dict], upload: bool = False) -> pd.DataFrame:
+    """Build a single-day DataFrame, clean it, save locally, and optionally upload."""
+    df = pd.DataFrame(rows)
+    df.dropna(subset=["snow_depth", "swe", "temp"], inplace=True)
+    float_cols = df.select_dtypes(include="number").columns
+    df[float_cols] = df[float_cols].round(3)
+    df.sort_values("station_id", ascending=True, inplace=True)
+    df.reset_index(drop=True, inplace=True)
 
     os.makedirs(DATA_DIR, exist_ok=True)
-    combined.to_csv(DAILY_STATION_FILE, index=False)
-    logger.info(f"Saved {len(combined)} rows to {DAILY_STATION_FILE}")
+    df.to_csv(DAILY_STATION_FILE, index=False)
+    logger.info(f"Saved {len(df)} rows to {DAILY_STATION_FILE}")
 
     if upload:
         upload_to_s3(DAILY_STATION_FILE, S3_DAILY_STATION_KEY)
 
-    return combined
+    return df
+
+
+def _archive_latest() -> None:
+    """
+    Archive the current /latest/ file to a /YYYY-MM-DD/ folder in S3.
+    Uses yesterday's date since the Lambda runs daily and /latest/ holds
+    the previous day's data.
+    """
+    yesterday_str = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    archive_key = s3_archive_key(yesterday_str, DAILY_STATION_BASENAME)
+    logger.info(f"Archiving latest weather data → {archive_key}")
+    copy_s3_object(S3_DAILY_STATION_KEY, archive_key)
 
 
 # ── Lambda daily update ──────────────────────────────────────────────
 def update_daily_station_data() -> int:
     """
-    Daily update: fetch today's data for all stations.
-    - First run (no existing CSV): fetch yesterday + today, compute new_snow_24hr.
-    - Subsequent runs: fetch only today, use yesterday from existing CSV.
+    Daily update (Lambda):
+    1. Download current /latest/ file from S3
+    2. Archive it to /YYYY-MM-DD/ folder
+    3. Download yesterday's archive to compute new_snow_24hr
+    4. Fetch today's data for all stations
+    5. Save single-day CSV and upload to /latest/
     """
     os.makedirs(DATA_DIR, exist_ok=True)
 
-    if IS_LAMBDA:
-        download_from_s3(S3_DAILY_STATION_KEY, DAILY_STATION_FILE)
-        download_from_s3(S3_STATIONS_KEY, STATIONS_FILE)
-
+    download_from_s3(S3_STATIONS_KEY, STATIONS_FILE)
     stations_df = pd.read_csv(STATIONS_FILE)
-    existing_df = _load_existing()
 
     today = datetime.now()
     yesterday = today - timedelta(days=1)
     today_str = today.strftime("%Y-%m-%d")
     yesterday_str = yesterday.strftime("%Y-%m-%d")
 
-    all_new_rows = []
-
-    if existing_df.empty or yesterday_str not in existing_df["date"].values:
-        # First run or missing yesterday — fetch yesterday first
-        logger.info(f"Fetching yesterday ({yesterday_str}) for all stations ...")
-        yesterday_rows = _build_rows_for_date(stations_df, yesterday)
-        all_new_rows.extend(yesterday_rows)
-        # Build yesterday depths from the fresh fetch
-        yesterday_depths = {r["station_id"]: r["snow_depth"] for r in yesterday_rows}
+    # Step 1 & 2: Download current /latest/ and archive it
+    has_latest = download_from_s3(S3_DAILY_STATION_KEY, DAILY_STATION_FILE)
+    if has_latest:
+        latest_df = _load_csv(DAILY_STATION_FILE)
+        _archive_latest()
     else:
-        # Subsequent run — use existing yesterday data
-        yesterday_depths = _get_yesterday_depths(existing_df, yesterday_str)
+        latest_df = pd.DataFrame()
 
+    # Step 3: Get yesterday's depths for new_snow_24hr calculation
+    # Try the current latest first (it may be yesterday's data)
+    yesterday_depths = _get_yesterday_depths(latest_df, yesterday_str)
+
+    if yesterday_depths is None:
+        # Try downloading from the archive
+        yesterday_archive_key = s3_archive_key(yesterday_str, DAILY_STATION_BASENAME)
+        yesterday_local = os.path.join(DATA_DIR, "yesterday_station_data.csv")
+        if download_from_s3(yesterday_archive_key, yesterday_local):
+            yesterday_df = _load_csv(yesterday_local)
+            yesterday_depths = _get_yesterday_depths(yesterday_df, yesterday_str)
+
+    if yesterday_depths is None:
+        # No yesterday data available — fetch it, archive it, then use for depth calc
+        logger.info(f"No yesterday data found. Fetching yesterday ({yesterday_str}) ...")
+        yesterday_rows = _build_rows_for_date(stations_df, yesterday)
+        yesterday_depths = {r["station_id"]: r["snow_depth"] for r in yesterday_rows}
+        # Save and archive yesterday as its own single-day file
+        yesterday_df = pd.DataFrame(yesterday_rows)
+        yesterday_df.dropna(subset=["snow_depth", "swe", "temp"], inplace=True)
+        yesterday_local = os.path.join(DATA_DIR, "yesterday_station_data.csv")
+        yesterday_df.to_csv(yesterday_local, index=False)
+        yesterday_archive_key = s3_archive_key(yesterday_str, DAILY_STATION_BASENAME)
+        upload_to_s3(yesterday_local, yesterday_archive_key)
+
+    # Step 4 & 5: Fetch today, save single-day CSV, upload to /latest/
     logger.info(f"Fetching today ({today_str}) for all stations ...")
     today_rows = _build_rows_for_date(stations_df, today, yesterday_depths)
-    all_new_rows.extend(today_rows)
-
-    combined = _merge_and_save(existing_df, all_new_rows, upload=IS_LAMBDA)
-    return len(combined)
+    result_df = _save_single_day(today_rows, upload=IS_LAMBDA)
+    return len(result_df)
 
 
 # ── Full local rebuild ───────────────────────────────────────────────
 def fetch_all_station_data() -> pd.DataFrame | None:
     """
-    Local usage: same logic as daily update but never uploads to S3.
+    Local usage: fetch today's data (and yesterday if needed).
+    Does not upload to S3. Saves multi-day appended CSV locally for convenience.
     """
     stations_df = pd.read_csv(STATIONS_FILE)
-    existing_df = _load_existing()
+    existing_df = _load_csv(DAILY_STATION_FILE)
 
     today = datetime.now()
     yesterday = today - timedelta(days=1)
@@ -202,7 +230,24 @@ def fetch_all_station_data() -> pd.DataFrame | None:
     today_rows = _build_rows_for_date(stations_df, today, yesterday_depths)
     all_new_rows.extend(today_rows)
 
-    combined = _merge_and_save(existing_df, all_new_rows, upload=False)
+    # Local: append to existing multi-day CSV
+    new_df = pd.DataFrame(all_new_rows)
+    if not existing_df.empty:
+        combined = pd.concat([existing_df, new_df], ignore_index=True)
+    else:
+        combined = new_df
+
+    combined.drop_duplicates(subset=["date", "station_id"], keep="last", inplace=True)
+    combined.dropna(subset=["snow_depth", "swe", "temp"], inplace=True)
+    float_cols = combined.select_dtypes(include="number").columns
+    combined[float_cols] = combined[float_cols].round(3)
+    combined.sort_values(["date", "station_id"], ascending=[False, True], inplace=True)
+    combined.reset_index(drop=True, inplace=True)
+
+    os.makedirs(DATA_DIR, exist_ok=True)
+    combined.to_csv(DAILY_STATION_FILE, index=False)
+    logger.info(f"Saved {len(combined)} rows to {DAILY_STATION_FILE}")
+
     return combined
 
 

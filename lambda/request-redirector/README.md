@@ -13,6 +13,10 @@ Invoked by API Gateway with 2 types of requests:
 }
 ```
 
+```bash
+curl -s -X POST https://mera3wkzuj.execute-api.us-west-2.amazonaws.com/request-redirector
+```
+
 **User Location**
 ```json
 {
@@ -21,6 +25,12 @@ Invoked by API Gateway with 2 types of requests:
     "latitude": 39.7
   }
 }
+```
+
+```bash
+curl -s -X POST https://mera3wkzuj.execute-api.us-west-2.amazonaws.com/request-redirector \
+  -H "Content-Type: application/json" \
+  -d '{"longitude": -104.99, "latitude": 39.73}'
 ```
 
 ## Local Testing
