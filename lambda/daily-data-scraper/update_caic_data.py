@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from utils.s3_helpers import (
     IS_LAMBDA, S3_CAIC_CLEAN_KEY,
     download_from_s3, upload_to_s3, copy_s3_object, s3_archive_key,
+    delete_s3_object,
 )
 from utils.process_caic import load_caic_data
 
@@ -181,10 +182,13 @@ def _archive_latest() -> None:
 def update_data() -> int:
     """
     Daily update (Lambda):
-    1. Download current /latest/ file from S3
+    1. Download current /latest/ CAIC file from S3
     2. Archive it to /YYYY-MM-DD/ folder
-    3. Fetch today's new reports
-    4. Save single-day CSV and upload to /latest/
+    3. Delete /latest/ so the 15-min checker starts fresh for the new day
+
+    Note: CAIC scraping is handled by the new-avalanche-checker Lambda,
+    which runs every 15 minutes and builds latest/daily_caic_data.csv
+    throughout the day.
     """
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -193,15 +197,20 @@ def update_data() -> int:
     if has_latest:
         _archive_latest()
 
-    # Step 3: Determine fetch window — just today's reports
-    today = datetime.now()
-    yesterday = today - timedelta(days=1)
-    # Fetch from yesterday 6AM to today (the CAIC API uses 6AM boundaries)
-    new_rows = _fetch_new_reports(yesterday, today)
+        # Count rows for reporting
+        try:
+            df = pd.read_csv(CLEAN_FILE)
+            count = len(df)
+        except Exception:
+            count = 0
 
-    # Step 4: Save single-day CSV and upload to /latest/
-    result_df = _clean_and_save(new_rows, upload_key=S3_CAIC_CLEAN_KEY)
-    return len(result_df)
+        # Step 3: Delete latest so the 15-min checker starts fresh
+        delete_s3_object(S3_CAIC_CLEAN_KEY)
+        logger.info("Deleted latest CAIC file — 15-min checker will rebuild for new day")
+        return count
+
+    logger.info("No latest CAIC file found to archive")
+    return 0
 
 
 # ── Full local fetch ─────────────────────────────────────────────────

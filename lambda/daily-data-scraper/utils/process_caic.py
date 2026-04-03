@@ -63,7 +63,7 @@ def load_caic_data(source, natural_only=True):
     df_final["avalanche_occurred"] = 1
 
     # Drop rows missing critical fields
-    df_final = df_final.dropna(subset=["Date", "Longitude", "latitude", "avalanche_size", "Area"])
+    df_final = df_final.dropna(subset=["Date", "Longitude", "latitude", "avalanche_size"])
 
     # Filter by trigger type
     logger.info(f"Trigger distribution before filter:\n{df_final['Trigger'].value_counts(dropna=False)}")
@@ -71,11 +71,11 @@ def load_caic_data(source, natural_only=True):
     if natural_only:
         before_count = len(df_final)
         df_final = df_final[
-            df_final["Trigger"].isin(["N", "U"]) | df_final["Trigger"].isna()
+            df_final["Trigger"].isin(["N", "U", "AS"]) | df_final["Trigger"].isna()
         ]
         after_count = len(df_final)
         logger.info(
-            f"Filtered to natural/unknown triggers: {before_count:,} → {after_count:,} "
+            f"Filtered to natural/unknown/skier triggers: {before_count:,} → {after_count:,} "
             f"({before_count - after_count:,} removed)"
         )
 
