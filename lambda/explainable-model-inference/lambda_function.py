@@ -81,12 +81,11 @@ def lambda_handler(event, context):
         return _response(200, {
             "prediction": result["prediction"],
             "risk_level": result["risk_level"],
-            "optimal_threshold": result["optimal_threshold"],
             "shap_values": result["shap_values"],
             "base_value": result["base_value"],
             "explanation": result["explanation"],
             "terrain": terrain,
-            "weather": weather,
+            "weather": {**weather, "snow_ratio": result["features_used"]["snow_ratio"]},
             "stations_used": stations_used,
             "location": {"latitude": lat, "longitude": lon},
         })

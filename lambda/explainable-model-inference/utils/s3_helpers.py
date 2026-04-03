@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 # ── S3 Configuration ─────────────────────────────────────────────────────────
 # Model bucket (where your trained model lives)
 MODEL_BUCKET = os.environ.get("MODEL_BUCKET", "explain-model-bucket-west2")
-S3_MODEL_KEY = os.environ.get("MODEL_KEY", "models/avalanche_classifier_tuned.pkl")
+S3_MODEL_KEY = os.environ.get("MODEL_KEY", "models/pkl/logistic_avalanche.pkl")
 S3_DEM_KEY = os.environ.get("DEM_KEY", "data/colorado_dem.tif")
 
 # Data bucket (your teammate's cron job bucket — already exists)
