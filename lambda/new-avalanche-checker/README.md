@@ -43,13 +43,6 @@ Each new observation creates a row in `UserReactionsTable`:
 - **Reads**: `latest/daily_caic_data.csv` (created by `daily-data-scraper`)
 - **Writes**: Appends new rows to the same file so both this Lambda and the daily scraper stay in sync
 
-
-## IAM Permissions Required
-
-The Lambda execution role needs:
-- `s3:GetObject`, `s3:PutObject` on `daily-weather-data-csv-bucket/*`
-- `dynamodb:PutItem` on `UserReactionsTable`
-
 ## Local Usage
 
 ```bash
