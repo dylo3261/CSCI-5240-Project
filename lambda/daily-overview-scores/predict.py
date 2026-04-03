@@ -1,12 +1,12 @@
 """
 Avalanche prediction + SHAP explanation.
 
-Loads the tuned model package (joblib dict) from S3, runs prediction
-with the optimal threshold, and generates SHAP TreeExplainer output.
+Loads the logistic regression pipeline (joblib dict) from S3 and runs
+prediction with a 5-tier risk classification scheme, using SHAP
+LinearExplainer for per-feature attribution.
 """
 
 import os
-import io
 import logging
 
 import numpy as np
@@ -21,15 +21,24 @@ from utils.s3_helpers import (
 
 logger = logging.getLogger(__name__)
 
-MODEL_FILE = os.path.join(DATA_DIR, "avalanche_classifier_tuned.pkl")
+MODEL_FILE = os.path.join(DATA_DIR, "logistic_avalanche.pkl")
 
 # Cache across warm invocations
-_model_package = None  # {"model": ..., "optimal_threshold": ..., "feature_cols": [...]}
+_model_package = None  # {"pipeline": ..., "numeric_features": [...], ...}
 _explainer = None
 
 
+def _pred_class(p: float) -> str:
+    """Map probability to 5-tier avalanche risk label."""
+    if p >= 0.80: return "Extreme"
+    if p >= 0.60: return "High"
+    if p >= 0.40: return "Considerable"
+    if p >= 0.20: return "Moderate"
+    return "Low"
+
+
 def _load_model_package() -> dict:
-    """Load the tuned model package from S3 (joblib dict)."""
+    """Load the logistic regression pipeline from S3 (joblib dict)."""
     global _model_package
     if _model_package is not None:
         return _model_package
@@ -38,22 +47,37 @@ def _load_model_package() -> dict:
         download_model_file(S3_MODEL_KEY, MODEL_FILE)
 
     _model_package = joblib.load(MODEL_FILE)
-    logger.info(
-        f"Model loaded — threshold: {_model_package['optimal_threshold']:.2f}, "
-        f"features: {_model_package['feature_cols']}"
-    )
+    logger.info(f"Model loaded — features: {_model_package['numeric_features']}")
     return _model_package
 
 
 def _get_explainer():
-    """Create and cache SHAP TreeExplainer (matches 07_explain_predictions.py)."""
+    """Create and cache SHAP LinearExplainer for the logistic regression pipeline."""
     global _explainer
     if _explainer is not None:
         return _explainer
 
     pkg = _load_model_package()
-    _explainer = shap.TreeExplainer(pkg["model"])
-    logger.info("SHAP TreeExplainer created")
+    pipeline = pkg["pipeline"]
+    feature_cols = pkg["numeric_features"]
+
+    # Representative Colorado mountain background for LinearExplainer.
+    # Used as the reference point for SHAP deviation computation.
+    background = pd.DataFrame([{
+        "elevation": 3000,
+        "slope": 25,
+        "aspect_degrees": 180,
+        "snow_depth": 80,
+        "new_snow_24h": 10,
+        "temp": -8,
+        "snow_ratio": 3.0,
+    }])[feature_cols]
+
+    preprocessor = pipeline[:-1]   # SimpleImputer + RobustScaler
+    X_background = preprocessor.transform(background)
+
+    _explainer = shap.LinearExplainer(pipeline[-1], X_background)
+    logger.info("SHAP LinearExplainer created")
     return _explainer
 
 
@@ -68,78 +92,60 @@ def predict_and_explain(terrain: dict, weather: dict) -> dict:
     Returns:
         {
             "prediction": float (probability),
-            "risk_level": str,
-            "optimal_threshold": float,
+            "risk_level": str (Low/Moderate/Considerable/High/Extreme),
             "shap_values": {feature: shap_value, ...} sorted by |impact|,
             "base_value": float,
-            "explanation": str (human-readable),
+            "explanation": list[dict],
             "features_used": {feature: value, ...},
         }
     """
     pkg = _load_model_package()
-    model = pkg["model"]
-    optimal_threshold = pkg["optimal_threshold"]
-    feature_cols = pkg["feature_cols"]
+    pipeline = pkg["pipeline"]
+    feature_cols = pkg["numeric_features"]
 
-    # Build feature vector in exact order the model expects
-    # feature_cols = ['elevation', 'slope', 'aspect_degrees', 'snow_depth', 'new_snow_24h', 'swe', 'temp']
+    # Compute snow_ratio from swe (swe still fetched from SNOTEL but not a direct feature)
+    swe = weather.get("swe")
+    snow_depth = weather["snow_depth"]
+    snow_ratio = round(snow_depth / swe, 2) if swe and swe > 0 else 0.0
+
     features = {
         "elevation": terrain["elevation"],
         "slope": terrain["slope"],
         "aspect_degrees": terrain["aspect_degrees"],
-        "snow_depth": weather["snow_depth"],
+        "snow_depth": snow_depth,
         "new_snow_24h": weather["new_snow_24h"],
-        "swe": weather["swe"],
         "temp": weather["temp"],
+        "snow_ratio": snow_ratio,
     }
 
-    # Check for missing values
     missing = [k for k, v in features.items() if v is None]
     if missing:
         raise ValueError(
             f"Missing feature values: {missing}. "
-            f"Not enough SNOTEL data available for prediction."
+            "Not enough SNOTEL data available for prediction."
         )
 
-    # Create DataFrame with correct column order
     feature_df = pd.DataFrame([features])[feature_cols]
 
     # ── Predict ──────────────────────────────────────────────────────────
-    prob = float(model.predict_proba(feature_df)[0, 1])
-
-    # Risk label using tuned threshold (matches 07_explain_predictions.py)
-    if prob >= optimal_threshold:
-        risk_level = "HIGH DANGER"
-    elif prob >= (optimal_threshold - 0.1):
-        risk_level = "MODERATE"
-    else:
-        risk_level = "LOW"
+    prob = float(pipeline.predict_proba(feature_df)[0, 1])
+    risk_level = _pred_class(prob)
 
     # ── SHAP ─────────────────────────────────────────────────────────────
     explainer = _get_explainer()
-    shap_values = explainer.shap_values(feature_df)
+    preprocessor = pipeline[:-1]
+    X_preprocessed = preprocessor.transform(feature_df)
+    shap_values = explainer.shap_values(X_preprocessed)  # (n_samples, n_features)
 
-    # Handle different SHAP return formats (from 07_explain_predictions.py)
-    if isinstance(shap_values, list):
-        sv = shap_values[1][0]  # Binary: [class_0, class_1] → class_1, first sample
-    else:
-        sv = shap_values[0]
-
-    if len(sv.shape) > 1:
+    sv = np.array(shap_values[0]) if isinstance(shap_values, list) else np.array(shap_values[0])
+    if sv.ndim > 1:
         sv = sv.flatten()
-
     sv = sv[:len(feature_cols)]
 
-    # SHAP dict sorted by absolute impact
     shap_dict = {col: round(float(val), 6) for col, val in zip(feature_cols, sv)}
     shap_sorted = dict(sorted(shap_dict.items(), key=lambda x: abs(x[1]), reverse=True))
 
-    # Base value
-    base_value = explainer.expected_value
-    if isinstance(base_value, (list, np.ndarray)):
-        base_value = float(base_value[1])
-    else:
-        base_value = float(base_value)
+    base_value = float(explainer.expected_value)
 
     # ── Structured explanation ────────────────────────────────────────────
     explanation = _build_explanation(shap_sorted, features)
@@ -147,7 +153,6 @@ def predict_and_explain(terrain: dict, weather: dict) -> dict:
     return {
         "prediction": round(prob, 4),
         "risk_level": risk_level,
-        "optimal_threshold": round(optimal_threshold, 4),
         "shap_values": shap_sorted,
         "base_value": round(base_value, 4),
         "explanation": explanation,
@@ -156,23 +161,7 @@ def predict_and_explain(terrain: dict, weather: dict) -> dict:
 
 
 def _build_explanation(shap_sorted: dict, features: dict) -> list[dict]:
-    """
-    Build structured SHAP explanation as a list of dicts.
-
-    Returns:
-        [
-            {
-                "feature": "new_snow_24h",
-                "value": 35.0,
-                "shap_impact": 0.234,
-                "direction": "increasing",
-                "context": "heavy recent snowfall - CRITICAL"
-            },
-            ...
-        ]
-
-    Sorted by absolute SHAP impact. Top 3 increasing + top 3 decreasing.
-    """
+    """Build structured SHAP explanation. Top 3 increasing + top 3 decreasing."""
     explanation = []
 
     increasing = [(k, v) for k, v in shap_sorted.items() if v > 0][:3]
@@ -219,4 +208,8 @@ def _feature_context(feature: str, value: float) -> str:
     elif feature == "elevation":
         if value > 3500: return "alpine zone"
         if value > 3000: return "high elevation"
+    elif feature == "snow_ratio":
+        if value > 5.0: return "very high ratio - instability risk"
+        if value > 4.0: return "high snow ratio"
+        if value < 2.0: return "low density snowpack"
     return ""
