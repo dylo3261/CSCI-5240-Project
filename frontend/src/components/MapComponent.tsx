@@ -17,7 +17,7 @@ const LON_STEP = 2 / 53;
 
 const canvasRenderer = L.canvas({ padding: 0.5 });
 
-const getColor = (v: number) => `hsl(${(1 - v) * 240}, 90%, 50%)`;
+const getColor = (v: number) => `hsl(${(1 - v) * 120}, 90%, 45%)`;
 
 export type ReactionType =
   | "icy"

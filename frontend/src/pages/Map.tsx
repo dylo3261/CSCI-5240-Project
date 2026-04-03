@@ -47,7 +47,7 @@ const WS_URL = "wss://j9jkzycsge.execute-api.us-west-2.amazonaws.com/prod";
 // Replace with the https:// URL from the SAM stack output FetchReactionsEndpoint
 const FETCH_REACTIONS_URL = "https://wpvtd43yyi.execute-api.us-west-2.amazonaws.com/reactions";
 
-const getColor = (v: number) => `hsl(${(1 - v) * 240}, 90%, 50%)`;
+const getColor = (v: number) => `hsl(${(1 - v) * 120}, 90%, 45%)`;
 
 export default function Map() {
   const [submittedCoords, setSubmittedCoords] = useState<{ lat: number; lng: number } | null>(null);
