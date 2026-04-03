@@ -164,7 +164,7 @@ export default function Map() {
           <Box sx={{
             position: "absolute",
             bottom: 24,
-            right: 16,
+            left: 16,
             zIndex: 1000,
             bgcolor: "rgba(10, 22, 40, 0.85)",
             backdropFilter: "blur(8px)",
