@@ -99,7 +99,7 @@ def _flatten_report(report: dict) -> dict:
 
 
 def _fetch_window(start_dt: datetime, end_dt: datetime) -> list[dict]:
-    """Fetch all CAIC reports in a time window (paginated)."""
+    """Fetch all CAIC reports created in a time window (paginated)."""
     start_iso = start_dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
     end_iso = end_dt.strftime("%Y-%m-%dT%H:%M:%S.999Z")
     all_rows, page = [], 1
@@ -107,8 +107,8 @@ def _fetch_window(start_dt: datetime, end_dt: datetime) -> list[dict]:
     while True:
         params = {
             "page": page, "per": PER_PAGE,
-            "r[observed_at_gteq]": start_iso,
-            "r[observed_at_lteq]": end_iso,
+            "r[created_at_gteq]": start_iso,
+            "r[created_at_lteq]": end_iso,
             "r[sorts][]": ["observed_at desc", "created_at desc"],
         }
         resp = requests.get(API_BASE, params=params, timeout=60)
