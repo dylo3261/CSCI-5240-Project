@@ -21,7 +21,6 @@ const REACTIONS: { type: ReactionType; emoji: string; label: string }[] = [
   { type: "heavy_snow", emoji: "🌨️", label: "Heavy Snow" },
   { type: "foggy",      emoji: "🌫️", label: "Foggy"      },
   { type: "sketchy",    emoji: "⚠️", label: "Sketchy"    },
-  { type: "avalanche",  emoji: "🏔️", label: "Avalanche"  },
 ];
 
 interface SidebarProps {
@@ -83,8 +82,9 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation }: Sid
 
   return (
     <Paper elevation={4} sx={{
-      width: 280, // Slightly widened to accommodate grid layout better
-      flexShrink: 0,
+      width: 280,
+      height: "100%",
+      boxSizing: "border-box",
       bgcolor: "#0a1628",
       border: "1px solid rgba(255,255,255,0.08)",
       borderRadius: 3,
@@ -92,7 +92,6 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation }: Sid
       display: "flex",
       flexDirection: "column",
       gap: 2.5,
-      mt: "40px",
       overflowY: "auto",
     }}>
 
@@ -195,6 +194,38 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation }: Sid
           >
             Post Reaction
           </Button>
+
+          {/* Avalanche reporting disclaimer */}
+          <Box sx={{
+            bgcolor: "rgba(183,28,28,0.15)",
+            border: "1px solid rgba(183,28,28,0.4)",
+            borderRadius: 2,
+            p: 1.5,
+          }}>
+            <Typography variant="caption" color="rgba(255,255,255,0.9)" fontWeight={600} display="block" mb={0.5}>
+              💀 Witnessed an avalanche?
+            </Typography>
+            <Typography variant="caption" color="rgba(255,255,255,0.65)" display="block" lineHeight={1.5}>
+              Please report it directly to the Colorado Avalanche Information Center (CAIC). Official reports help keep everyone safe.
+            </Typography>
+            <Typography
+              component="a"
+              href="https://avalanche.state.co.us/observations/report"
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="caption"
+              sx={{
+                color: "#ef9a9a",
+                fontWeight: 600,
+                textDecoration: "none",
+                display: "block",
+                mt: 0.75,
+                "&:hover": { textDecoration: "underline" },
+              }}
+            >
+              Report on CAIC →
+            </Typography>
+          </Box>
         </Box>
       </Box>
 

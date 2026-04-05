@@ -13,8 +13,11 @@ REACTIONS_TABLE = os.environ["REACTIONS_TABLE"]
 WEBSOCKET_ENDPOINT = os.environ["WEBSOCKET_ENDPOINT"]
 
 VALID_REACTION_TYPES = frozenset({
-    "icy", "powder", "bluebird", "crowded", "heavy_snow", "foggy", "sketchy", "avalanche"
+    "icy", "powder", "bluebird", "crowded", "heavy_snow", "foggy", "sketchy"
 })
+# "avalanche" is intentionally excluded — users must report to CAIC directly.
+# CAIC-sourced avalanche pins are inserted by the new-avalanche-checker Lambda,
+# which writes directly to DynamoDB and does not use this WebSocket handler.
 
 dynamodb = boto3.resource("dynamodb")
 connections_table = dynamodb.Table(CONNECTIONS_TABLE)

@@ -13,7 +13,7 @@ const REACTION_EMOJI: Record<ReactionType, string> = {
   heavy_snow: "🌨️",
   foggy: "🌫️",
   sketchy: "⚠️",
-  avalanche: "🏔️",
+  avalanche: "💀",
 };
 
 const REACTION_LABEL: Record<ReactionType, string> = {
@@ -44,7 +44,7 @@ const reactionIcons: Record<ReactionType, L.DivIcon> = {
   heavy_snow: makeIcon("🌨️"),
   foggy: makeIcon("🌫️"),
   sketchy: makeIcon("⚠️"),
-  avalanche: makeIcon("🏔️"),
+  avalanche: makeIcon("💀"),
 };
 
 const fallbackIcon = L.divIcon({

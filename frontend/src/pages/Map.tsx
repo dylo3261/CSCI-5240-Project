@@ -145,6 +145,7 @@ export default function Map() {
       justifyContent: "center",
       alignItems: "flex-start",
       height: "calc(100vh - 64px)",
+      overflow: "hidden",
       bgcolor: "#0f1b2d",
       p: 3,
     }}>
@@ -197,12 +198,14 @@ export default function Map() {
         </Box>
       </Box>
 
-      <Sidebar
-        onSubmit={setSubmittedCoords}
-        sendReaction={sendReaction}
-        pendingLocation={pendingLocation}
-        isLoggedIn={isLoggedIn}
-      />
+      <Box sx={{ height: "100%", pt: "40px", boxSizing: "border-box", flexShrink: 0 }}>
+        <Sidebar
+          onSubmit={setSubmittedCoords}
+          sendReaction={sendReaction}
+          pendingLocation={pendingLocation}
+          isLoggedIn={isLoggedIn}
+        />
+      </Box>
     </Box>
   );
 }
