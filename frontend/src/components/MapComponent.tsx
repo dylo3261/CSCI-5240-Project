@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   MapContainer,
   TileLayer,
-  Rectangle,
+  ImageOverlay,
   Marker,
   useMap,
   useMapEvents,
@@ -22,9 +22,12 @@ const COLORADO_BOUNDS: L.LatLngBoundsLiteral = [
 ];
 const MIN_ZOOM = 6;
 
-const canvasRenderer = L.canvas({ padding: 0.5 });
-
 const getColor = (v: number) => `hsl(${(1 - v) * 240}, 90%, 50%)`;
+
+// Canvas resolution for the grid overlay image.
+// At 1400×800, each 2-mile cell is ~7×6 pixels — enough for seamless tiling.
+const OVERLAY_WIDTH = 1400;
+const OVERLAY_HEIGHT = 800;
 
 export type ReactionType =
   | "icy"
@@ -73,7 +76,7 @@ function FlyTo({ coords }: { coords: { lat: number; lng: number } | null }) {
     if (coords) {
       map.flyTo([coords.lat, coords.lng], 10, { duration: 1.5 });
     }
-  }, [coords]);
+  }, [coords, map]);
   return null;
 }
 
@@ -104,6 +107,35 @@ export default function MapComponent({
     : null;
   const cardDismissed =
     pendingLocationKey !== null && dismissedLocationKey === pendingLocationKey;
+
+  // Render grid cells to an offscreen canvas once cells are loaded.
+  // Using floor/ceil for pixel bounds guarantees adjacent cells share edges
+  // with no sub-pixel gap regardless of zoom level.
+  const overlayUrl = useMemo(() => {
+    if (cells.length === 0) return "";
+
+    const [[south, west], [north, east]] = COLORADO_BOUNDS;
+    const lonRange = east - west;
+    const latRange = north - south;
+    const W = OVERLAY_WIDTH;
+    const H = OVERLAY_HEIGHT;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d")!;
+
+    for (const cell of cells) {
+      const x0 = Math.floor(((cell.lon - LON_STEP / 2) - west) / lonRange * W);
+      const x1 = Math.ceil(((cell.lon + LON_STEP / 2) - west) / lonRange * W);
+      const y0 = Math.floor((north - (cell.lat + LAT_STEP / 2)) / latRange * H);
+      const y1 = Math.ceil((north - (cell.lat - LAT_STEP / 2)) / latRange * H);
+      ctx.fillStyle = getColor(cell.value);
+      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    }
+
+    return canvas.toDataURL();
+  }, [cells]);
 
   useEffect(() => {
     fetch(
@@ -148,21 +180,13 @@ export default function MapComponent({
         />
         <FlyTo coords={coords} />
         <LocationSelector onLocationSelect={onLocationSelect} />
-        {cells.map((cell, i) => (
-          <Rectangle
-            key={i}
-            bounds={[
-              [cell.lat - LAT_STEP / 2, cell.lon - LON_STEP / 2],
-              [cell.lat + LAT_STEP / 2, cell.lon + LON_STEP / 2],
-            ]}
-            renderer={canvasRenderer}
-            pathOptions={{
-              fillColor: getColor(cell.value),
-              fillOpacity: 0.35,
-              stroke: false,
-            }}
+        {overlayUrl && (
+          <ImageOverlay
+            url={overlayUrl}
+            bounds={COLORADO_BOUNDS}
+            opacity={0.55}
           />
-        ))}
+        )}
         {pendingLocation && (
           <Marker
             position={[pendingLocation.lat, pendingLocation.lng]}

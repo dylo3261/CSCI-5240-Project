@@ -46,9 +46,9 @@ logger.setLevel(logging.INFO)
 DEFAULT_GRID_CONFIG = {
     "north": 41.0,
     "south": 37.0,
-    "west": -109.05,  # Extended west to match frontend grid
-    "east": -105.314,  # Extended east to match frontend grid
-    "cell_size_mi": 2,  # miles per grid cell (matches frontend 2mi × 2mi grid)
+    "west": -109.05,
+    "east": -102.05,  # Full Colorado eastern border (~102°02'48"W)
+    "cell_size_mi": 2,
 }
 
 # Conversion: miles to degrees at Colorado's average latitude (~39°)

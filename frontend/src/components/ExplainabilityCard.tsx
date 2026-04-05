@@ -61,20 +61,15 @@ export default function ExplainabilityCard({ location, onClose }: Props) {
   const [result, setResult] = useState<ExplainabilityResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     if (!location) {
-      setVisible(false);
       return;
     }
 
     setResult(null);
     setError(null);
     setLoading(true);
-
-    // Trigger entrance animation after mount
-    const animTimer = setTimeout(() => setVisible(true), 10);
 
     const controller = new AbortController();
 
@@ -102,7 +97,6 @@ export default function ExplainabilityCard({ location, onClose }: Props) {
 
     return () => {
       controller.abort();
-      clearTimeout(animTimer);
     };
   }, [location]);
 
@@ -124,10 +118,19 @@ export default function ExplainabilityCard({ location, onClose }: Props) {
         borderRadius: 3,
         overflow: "hidden",
         boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
-        // Slide-in animation
-        opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(-12px)",
-        transition: "opacity 0.25s ease, transform 0.25s ease",
+        opacity: 0,
+        transform: "translateY(-12px)",
+        animation: "explainability-card-in 0.25s ease forwards",
+        "@keyframes explainability-card-in": {
+          from: {
+            opacity: 0,
+            transform: "translateY(-12px)",
+          },
+          to: {
+            opacity: 1,
+            transform: "translateY(0)",
+          },
+        },
       }}
     >
       {/* Header */}

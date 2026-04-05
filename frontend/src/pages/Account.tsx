@@ -181,14 +181,15 @@ function AccountDetails({ user, signOut, attributes, setAttributes }: AccountDet
 
 function MyReactionsTab({ userId }: { userId: string | undefined }) {
   const [reactions, setReactions] = useState<ReactionMarker[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(userId));
   const [range, setRange] = useState<[number, number]>([0, 0]);
 
   useEffect(() => {
     if (!userId) {
-      setLoading(false);
       return;
     }
+
+    setLoading(true);
 
     fetch(`${FETCH_USER_REACTIONS_URL}?userId=${encodeURIComponent(userId)}`)
       .then(r => {
