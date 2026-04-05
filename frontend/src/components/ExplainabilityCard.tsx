@@ -151,14 +151,12 @@ export default function ExplainabilityCard({ location, onClose }: Props) {
   const [result, setResult] = useState<ExplainabilityResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [visible, setVisible] = useState(false);
 
   const [terrainOpen, setTerrainOpen] = useState(false);
   const [weatherOpen, setWeatherOpen] = useState(false);
 
 useEffect(() => {
     if (!location) {
-      setVisible(false);
       return;
     }
 
@@ -168,7 +166,6 @@ useEffect(() => {
     setTerrainOpen(false);
     setWeatherOpen(false);
 
-    const animTimer = setTimeout(() => setVisible(true), 10);
     const controller = new AbortController();
 
     fetch(EXPLAINABILITY_API_URL, {
@@ -205,7 +202,6 @@ useEffect(() => {
 
     return () => {
       controller.abort();
-      clearTimeout(animTimer);
     };
   }, [location]);
 
@@ -225,9 +221,19 @@ useEffect(() => {
         border: "1px solid rgba(255,255,255,0.1)",
         borderRadius: 3,
         boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
-        opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(-12px)",
-        transition: "opacity 0.25s ease, transform 0.25s ease",
+        opacity: 0,
+        transform: "translateY(-12px)",
+        animation: "explainability-card-in 0.25s ease forwards",
+        "@keyframes explainability-card-in": {
+          from: {
+            opacity: 0,
+            transform: "translateY(-12px)",
+          },
+          to: {
+            opacity: 1,
+            transform: "translateY(0)",
+          },
+        },
       }}
     >
       {/* Header */}

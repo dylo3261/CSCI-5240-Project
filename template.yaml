@@ -38,6 +38,8 @@ Resources:
           AttributeType: S
         - AttributeName: timestamp
           AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
       KeySchema:
         - AttributeName: reactionId
           KeyType: HASH
@@ -50,6 +52,17 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
+        - IndexName: UserIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
 
   WebSocketApi:
     Type: AWS::ApiGatewayV2::Api
@@ -146,6 +159,25 @@ Resources:
             Path: /reactions
             Method: GET
 
+  FetchUserReactionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.lambda_handler
+      CodeUri: lambda/fetch-user-reactions/
+      Runtime: python3.11
+      Environment:
+        Variables:
+          REACTIONS_TABLE: !Ref UserReactionsTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserReactionsTable
+      Events:
+        GetUserReactions:
+          Type: HttpApi
+          Properties:
+            Path: /user-reactions
+            Method: GET
+
 Outputs:
   ActiveConnectionsTableName:
     Value: !Ref ActiveConnectionsTable
@@ -161,3 +193,5 @@ Outputs:
     Value: !Sub "wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
   FetchReactionsEndpoint:
     Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/reactions"
+  FetchUserReactionsEndpoint:
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/user-reactions"

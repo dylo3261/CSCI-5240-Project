@@ -46,9 +46,9 @@ logger.setLevel(logging.INFO)
 DEFAULT_GRID_CONFIG = {
     "north": 41.0,
     "south": 37.0,
-    "west": -109.05,  # Extended west to match frontend grid
-    "east": -105.314,  # Extended east to match frontend grid
-    "cell_size_mi": 2,  # miles per grid cell (matches frontend 2mi × 2mi grid)
+    "west": -109.05,
+    "east": -102.05,  # Full Colorado eastern border (~102°02'48"W)
+    "cell_size_mi": 2,
 }
 
 # Conversion: miles to degrees at Colorado's average latitude (~39°)
@@ -284,17 +284,35 @@ def _predict_single(
         py, px = rowcol(transform, lon, lat)
 
         if py < 1 or py >= height - 1 or px < 1 or px >= width - 1:
-            return None
+            return {
+                "lat": round(float(lat), 4),
+                "lon": round(float(lon), 4),
+                "prediction": 0.0,
+                "risk_level": "LOW",
+                "elevation": 0.0,
+            }
 
         elevation = float(elevation_data[py, px])
         if elevation == nodata or elevation < -999:
-            return None
+            return {
+                "lat": round(float(lat), 4),
+                "lon": round(float(lon), 4),
+                "prediction": 0.0,
+                "risk_level": "LOW",
+                "elevation": 0.0,
+            }
 
         slope, aspect_deg = calculate_slope_aspect(
             elevation_data, transform, py, px, lat
         )
         if slope is None:
-            return None
+            return {
+                "lat": round(float(lat), 4),
+                "lon": round(float(lon), 4),
+                "prediction": 0.0,
+                "risk_level": "LOW",
+                "elevation": 0.0,
+            }
 
         # ── Weather (fast: vectorized distance calc) ─────────────────────
         distances = np.array([
@@ -325,7 +343,13 @@ def _predict_single(
                 valid_dists.append(dist)
 
         if not valid_dists:
-            return None
+            return {
+                "lat": round(float(lat), 4),
+                "lon": round(float(lon), 4),
+                "prediction": 0.0,
+                "risk_level": "LOW",
+                "elevation": round(elevation, 0),
+            }
 
         snow_depth_idw = inverse_distance_weighting(snow_depths, valid_dists)
         swe_idw = inverse_distance_weighting(swes, valid_dists)
@@ -339,7 +363,13 @@ def _predict_single(
         }
 
         if any(v is None for v in weather.values()):
-            return None
+            return {
+                "lat": round(float(lat), 4),
+                "lon": round(float(lon), 4),
+                "prediction": 0.0,
+                "risk_level": "LOW",
+                "elevation": round(elevation, 0),
+            }
 
         # ── Predict ──────────────────────────────────────────────────────
         features = {
