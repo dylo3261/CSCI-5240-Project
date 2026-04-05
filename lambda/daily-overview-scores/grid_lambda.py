@@ -111,9 +111,8 @@ def lambda_handler(event, context):
 
         logger.info("Loading model...")
         pkg = _load_model_package()
-        model = pkg["model"]
-        optimal_threshold = pkg["optimal_threshold"]
-        feature_cols = pkg["feature_cols"]
+        pipeline = pkg["pipeline"]
+        feature_cols = pkg["numeric_features"]
 
         logger.info("Loading weather data...")
         stations_df = _load_stations()
@@ -150,7 +149,7 @@ def lambda_handler(event, context):
                             elevation_data, transform, nodata, height, width,
                             station_lats, station_lons, station_ids,
                             stations_df, day_data,
-                            model, optimal_threshold, feature_cols,
+                            pipeline, feature_cols,
                         )
                         if result is not None:
                             cells.append(result)
@@ -273,7 +272,7 @@ def _predict_single(
     elevation_data, transform, nodata, height, width,
     station_lats, station_lons, station_ids,
     stations_df, day_data,
-    model, optimal_threshold, feature_cols,
+    pipeline, feature_cols,
 ):
     """
     Run a single prediction for one grid cell.
@@ -352,10 +351,14 @@ def _predict_single(
                 "elevation": round(elevation, 0),
             }
 
+        snow_depth_idw = inverse_distance_weighting(snow_depths, valid_dists)
+        swe_idw = inverse_distance_weighting(swes, valid_dists)
+        snow_ratio = round(snow_depth_idw / swe_idw, 2) if swe_idw and swe_idw > 0 else 0.0
+
         weather = {
-            "snow_depth": inverse_distance_weighting(snow_depths, valid_dists),
+            "snow_depth": snow_depth_idw,
             "new_snow_24h": inverse_distance_weighting(new_snows, valid_dists),
-            "swe": inverse_distance_weighting(swes, valid_dists),
+            "swe": swe_idw,
             "temp": inverse_distance_weighting(temps, valid_dists),
         }
 
@@ -375,19 +378,23 @@ def _predict_single(
             "aspect_degrees": round(aspect_deg, 2),
             "snow_depth": weather["snow_depth"],
             "new_snow_24h": weather["new_snow_24h"],
-            "swe": weather["swe"],
             "temp": weather["temp"],
+            "snow_ratio": snow_ratio,
         }
 
         feature_df = pd.DataFrame([features])[feature_cols]
-        prob = float(model.predict_proba(feature_df)[0, 1])
+        prob = float(pipeline.predict_proba(feature_df)[0, 1])
 
-        if prob >= optimal_threshold:
-            risk_level = "HIGH DANGER"
-        elif prob >= (optimal_threshold - 0.1):
-            risk_level = "MODERATE"
+        if prob >= 0.80:
+            risk_level = "Extreme"
+        elif prob >= 0.60:
+            risk_level = "High"
+        elif prob >= 0.40:
+            risk_level = "Considerable"
+        elif prob >= 0.20:
+            risk_level = "Moderate"
         else:
-            risk_level = "LOW"
+            risk_level = "Low"
 
         return {
             "lat": round(float(lat), 4),

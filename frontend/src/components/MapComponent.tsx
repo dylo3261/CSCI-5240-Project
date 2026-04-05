@@ -22,7 +22,7 @@ const COLORADO_BOUNDS: L.LatLngBoundsLiteral = [
 ];
 const MIN_ZOOM = 6;
 
-const getColor = (v: number) => `hsl(${(1 - v) * 240}, 90%, 50%)`;
+const getColor = (v: number) => `hsl(${(1 - v) * 120}, 90%, 45%)`;
 
 // Canvas resolution for the grid overlay image.
 // At 1400×800, each 2-mile cell is ~7×6 pixels — enough for seamless tiling.

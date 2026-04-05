@@ -8,9 +8,7 @@ Runs daily via **EventBridge → Lambda**.
 2. **CAIC update** (`python update_caic_data.py --lambda`)
    - Downloads current `latest/daily_caic_data.csv` from S3
    - Archives it to `YYYY-MM-DD/daily_caic_data.csv` (date from the data)
-   - Fetches today's new observation reports from the CAIC API
-   - Cleans new data via `utils/process_caic.load_caic_data()`
-   - Saves single-day CSV and uploads to `latest/daily_caic_data.csv`
+   - Deletes `latest/daily_caic_data.csv` so the 15-min checker (new-avalanche-scheker) starts fresh for the new day
 3. **Weather update** (`python update_weather_data.py --lambda`)
    - Downloads current `latest/daily_station_data.csv` from S3
    - Archives it to `YYYY-MM-DD/daily_station_data.csv` (date from the data)
