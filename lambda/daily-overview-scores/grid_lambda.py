@@ -171,14 +171,13 @@ def lambda_handler(event, context):
                 "min_risk": round(np.min(predictions), 4),
                 "median_risk": round(np.median(predictions), 4),
                 "pct_high": round(
-                    sum(1 for p in predictions if p >= optimal_threshold) / len(predictions), 4
+                    sum(1 for p in predictions if p >= 0.60) / len(predictions), 4
                 ),
                 "pct_moderate": round(
-                    sum(1 for p in predictions if (optimal_threshold - 0.1) <= p < optimal_threshold)
-                    / len(predictions), 4
+                    sum(1 for p in predictions if 0.20 <= p < 0.60) / len(predictions), 4
                 ),
                 "pct_low": round(
-                    sum(1 for p in predictions if p < (optimal_threshold - 0.1)) / len(predictions), 4
+                    sum(1 for p in predictions if p < 0.20) / len(predictions), 4
                 ),
                 "total_cells": len(cells),
                 "skipped_cells": skipped,

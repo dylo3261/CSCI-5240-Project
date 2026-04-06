@@ -83,6 +83,13 @@ export default function Map() {
         setUserId(uid);
         setIsLoggedIn(true);
 
+        // Warm up the explainability Lambda so first real click avoids cold start
+        fetch("https://mera3wkzuj.execute-api.us-west-2.amazonaws.com/request-redirector", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ latitude: 39.5, longitude: -106.0 }),
+        }).catch(() => {/* intentionally ignored */});
+
         ws = new WebSocket(WS_URL);
         wsRef.current = ws;
 
