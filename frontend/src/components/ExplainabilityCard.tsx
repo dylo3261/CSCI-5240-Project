@@ -3,6 +3,7 @@ import { Box, Typography, IconButton, Skeleton, Chip, Collapse, CircularProgress
 import CloseIcon from "@mui/icons-material/Close";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import DownloadIcon from "@mui/icons-material/Download";
 
 const EXPLAINABILITY_API_URL =
   "https://mera3wkzuj.execute-api.us-west-2.amazonaws.com/request-redirector";
@@ -144,10 +145,11 @@ function SectionHeader({ label, open, onToggle }: { label: string; open: boolean
 
 interface Props {
   location: { lat: number; lng: number } | null;
+  open: boolean;
   onClose: () => void;
 }
 
-export default function ExplainabilityCard({ location, onClose }: Props) {
+export default function ExplainabilityCard({ location, open, onClose }: Props) {
   const [result, setResult] = useState<ExplainabilityResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -163,6 +165,7 @@ useEffect(() => {
     setResult(null);
     setError(null);
     setLoading(true);
+    setVisible(false);
     setTerrainOpen(false);
     setWeatherOpen(false);
 
@@ -200,14 +203,62 @@ useEffect(() => {
         setLoading(false);
       });
 
-    return () => {
-      controller.abort();
-    };
+    return () => { controller.abort(); };
   }, [location]);
+
+  // Show/hide card based on whether the user has opened it
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => setVisible(true), 10);
+    } else {
+      setVisible(false);
+    }
+  }, [open]);
 
   if (!location) return null;
 
   const risk = result ? RISK_CONFIG[result.riskLevel] : null;
+
+  function handleDownload() {
+    if (!result || !location) return;
+    const directionSymbol = (d: string) => d === "positive" ? "↑" : d === "negative" ? "↓" : " ";
+    const lines = [
+      "AVALANCHE RISK REPORT",
+      "=====================",
+      `Date:       ${new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}`,
+      `Location:   ${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`,
+      "",
+      `Risk Level: ${RISK_CONFIG[result.riskLevel].label.toUpperCase()}`,
+      `Confidence: ${Math.round(result.confidence * 100)}%`,
+      "",
+      result.summary,
+      "",
+      "CONTRIBUTING FACTORS",
+      "--------------------",
+      ...result.factors.map((f) => `  ${directionSymbol(f.direction)} ${f.label.padEnd(18)} ${f.value}`),
+      "",
+      "TERRAIN",
+      "-------",
+      `  Elevation:  ${Math.round(result.terrain.elevation)} m`,
+      `  Slope:      ${result.terrain.slope.toFixed(1)}°`,
+      `  Aspect:     ${Math.round(result.terrain.aspect_degrees)}°`,
+      "",
+      ...(result.stations_used.length > 0 ? [
+        "WEATHER STATIONS USED",
+        "---------------------",
+        ...result.stations_used.map((s) => `  ${(s.name || s.station_triplet).padEnd(24)} ${s.distance_km.toFixed(1)} km`),
+        "",
+      ] : []),
+      "↑ raises risk   ↓ lowers risk",
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `avalanche-risk-${location.lat.toFixed(3)}-${location.lng.toFixed(3)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <Box
@@ -255,9 +306,16 @@ useEffect(() => {
           </Typography>
           {loading && <CircularProgress size={10} thickness={5} sx={{ color: "rgba(255,255,255,0.4)" }} />}
         </Box>
-        <IconButton size="small" onClick={onClose} sx={{ color: "rgba(255,255,255,0.4)", p: 0.25, "&:hover": { color: "#fff" } }}>
-          <CloseIcon fontSize="small" />
-        </IconButton>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+          {result && (
+            <IconButton size="small" onClick={handleDownload} sx={{ color: "rgba(255,255,255,0.4)", p: 0.25, "&:hover": { color: "#fff" } }}>
+              <DownloadIcon sx={{ fontSize: 15 }} />
+            </IconButton>
+          )}
+          <IconButton size="small" onClick={onClose} sx={{ color: "rgba(255,255,255,0.4)", p: 0.25, "&:hover": { color: "#fff" } }}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Box>
       </Box>
 
       {/* Coordinates */}
