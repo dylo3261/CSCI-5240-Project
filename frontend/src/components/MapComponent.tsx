@@ -1,23 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   MapContainer,
   TileLayer,
-  Rectangle,
+  ImageOverlay,
   Marker,
-  Popup,
   useMap,
   useMapEvents,
 } from "react-leaflet";
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import ExplainabilityCard from "./ExplainabilityCard";
+import ReactionClusterLayer from "./ReactionClusterLayer";
 
 const LAT_STEP = 2 / 69;
 const LON_STEP = 2 / 53;
 
-const canvasRenderer = L.canvas({ padding: 0.5 });
+// Exact Colorado state boundary corners (DMS → decimal degrees)
+const COLORADO_BOUNDS: L.LatLngBoundsLiteral = [
+  [36.9989, -109.0452], // SW — Four Corners Monument
+  [41.0, -102.0467], // NE corner
+];
+const MIN_ZOOM = 6;
 
 const getColor = (v: number) => `hsl(${(1 - v) * 120}, 90%, 45%)`;
+
+// Canvas resolution for the grid overlay image.
+// At 1400×800, each 2-mile cell is ~7×6 pixels — enough for seamless tiling.
+const OVERLAY_WIDTH = 1400;
+const OVERLAY_HEIGHT = 800;
 
 export type ReactionType =
   | "icy"
@@ -34,72 +44,11 @@ export interface ReactionMarker {
   dataType: string;
   timestamp: string;
   reactionType: ReactionType;
-  message: string;
+  message?: string;
   latitude: number;
   longitude: number;
-  userId: string;
+  userId?: string;
 }
-
-const REACTION_EMOJI: Record<ReactionType, string> = {
-  icy: "❄️",
-  powder: "⛷️",
-  bluebird: "☀️",
-  crowded: "👥",
-  heavy_snow: "🌨️",
-  foggy: "🌫️",
-  sketchy: "⚠️",
-  avalanche: "🏔️",
-};
-
-const REACTION_LABEL: Record<ReactionType, string> = {
-  icy: "Icy",
-  powder: "Powder",
-  bluebird: "Bluebird",
-  crowded: "Crowded",
-  heavy_snow: "Heavy Snow",
-  foggy: "Foggy",
-  sketchy: "Sketchy",
-  avalanche: "Avalanche",
-};
-
-function formatTimestamp(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
-function makeIcon(type: ReactionType): L.DivIcon {
-  return L.divIcon({
-    html: `<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.7));">${REACTION_EMOJI[type]}</div>`,
-    className: "",
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
-  });
-}
-
-const reactionIcons: Record<ReactionType, L.DivIcon> = {
-  icy: makeIcon("icy"),
-  powder: makeIcon("powder"),
-  bluebird: makeIcon("bluebird"),
-  crowded: makeIcon("crowded"),
-  heavy_snow: makeIcon("heavy_snow"),
-  foggy: makeIcon("foggy"),
-  sketchy: makeIcon("sketchy"),
-  avalanche: makeIcon("avalanche"),
-};
-
-// Fallback used when a reaction arrives with an unrecognized type. Keeps the
-// marker renderable so Leaflet never receives `undefined` as an icon prop.
-const fallbackReactionIcon = L.divIcon({
-  html: `<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.7));">📌</div>`,
-  className: "",
-  iconSize: [26, 26],
-  iconAnchor: [13, 13],
-});
 
 const pendingLocationIcon = L.divIcon({
   html: `<div style="font-size:24px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));">📍</div>`,
@@ -127,7 +76,7 @@ function FlyTo({ coords }: { coords: { lat: number; lng: number } | null }) {
     if (coords) {
       map.flyTo([coords.lat, coords.lng], 10, { duration: 1.5 });
     }
-  }, [coords]);
+  }, [coords, map]);
   return null;
 }
 
@@ -160,10 +109,34 @@ export default function MapComponent({
   const cardDismissed =
     pendingLocationKey !== null && dismissedLocationKey === pendingLocationKey;
 
-  // Reset card state whenever the selected location changes
-  useEffect(() => {
-    setCardOpen(false);
-  }, [pendingLocationKey]);
+  // Render grid cells to an offscreen canvas once cells are loaded.
+  // Using floor/ceil for pixel bounds guarantees adjacent cells share edges
+  // with no sub-pixel gap regardless of zoom level.
+  const overlayUrl = useMemo(() => {
+    if (cells.length === 0) return "";
+
+    const [[south, west], [north, east]] = COLORADO_BOUNDS;
+    const lonRange = east - west;
+    const latRange = north - south;
+    const W = OVERLAY_WIDTH;
+    const H = OVERLAY_HEIGHT;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d")!;
+
+    for (const cell of cells) {
+      const x0 = Math.floor(((cell.lon - LON_STEP / 2) - west) / lonRange * W);
+      const x1 = Math.ceil(((cell.lon + LON_STEP / 2) - west) / lonRange * W);
+      const y0 = Math.floor((north - (cell.lat + LAT_STEP / 2)) / latRange * H);
+      const y1 = Math.ceil((north - (cell.lat - LAT_STEP / 2)) / latRange * H);
+      ctx.fillStyle = getColor(cell.value);
+      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    }
+
+    return canvas.toDataURL();
+  }, [cells]);
 
   useEffect(() => {
     fetch(
@@ -197,6 +170,9 @@ export default function MapComponent({
       <MapContainer
         center={[39, -105.54]}
         zoom={7}
+        minZoom={MIN_ZOOM}
+        maxBounds={COLORADO_BOUNDS}
+        maxBoundsViscosity={0.8}
         style={{ height: "100%", width: "100%" }}
       >
         <TileLayer
@@ -205,21 +181,13 @@ export default function MapComponent({
         />
         <FlyTo coords={coords} />
         <LocationSelector onLocationSelect={onLocationSelect} />
-        {cells.map((cell, i) => (
-          <Rectangle
-            key={i}
-            bounds={[
-              [cell.lat - LAT_STEP / 2, cell.lon - LON_STEP / 2],
-              [cell.lat + LAT_STEP / 2, cell.lon + LON_STEP / 2],
-            ]}
-            renderer={canvasRenderer}
-            pathOptions={{
-              fillColor: getColor(cell.value),
-              fillOpacity: 0.35,
-              stroke: false,
-            }}
+        {overlayUrl && (
+          <ImageOverlay
+            url={overlayUrl}
+            bounds={COLORADO_BOUNDS}
+            opacity={0.55}
           />
-        ))}
+        )}
         {pendingLocation && (
           <Marker
             position={[pendingLocation.lat, pendingLocation.lng]}
@@ -227,51 +195,7 @@ export default function MapComponent({
           />
         )}
 
-        {/* --- MOVED THE REACTION LOOP INSIDE THE MAP CONTAINER --- */}
-        {reactions.map((r) => {
-          const icon = reactionIcons[r.reactionType] ?? fallbackReactionIcon;
-          return (
-            <Marker
-              key={r.reactionId}
-              position={[r.latitude, r.longitude]}
-              icon={icon}
-              eventHandlers={{
-                click: (e) => e.originalEvent.stopPropagation(),
-              }}
-            >
-              <Popup>
-                <div style={{ minWidth: 160, fontFamily: "sans-serif" }}>
-                  <div style={{ fontSize: 28, lineHeight: 1, marginBottom: 6 }}>
-                    {REACTION_EMOJI[r.reactionType]}
-                  </div>
-                  <div
-                    style={{
-                      fontWeight: 700,
-                      fontSize: 13,
-                      color: "#111",
-                      marginBottom: 6,
-                    }}
-                  >
-                    {REACTION_LABEL[r.reactionType]}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 13,
-                      color: "#333",
-                      lineHeight: 1.5,
-                      marginBottom: 8,
-                    }}
-                  >
-                    {r.message}
-                  </div>
-                  <div style={{ fontSize: 11, color: "#888" }}>
-                    {formatTimestamp(r.timestamp)}
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
+        <ReactionClusterLayer reactions={reactions} />
       </MapContainer>{" "}
       {pendingLocation && !cardDismissed && !cardOpen && (
         <button

@@ -73,50 +73,46 @@ export default function Map() {
     let cancelled = false;
 
     (async () => {
+      // Resolve auth state first, but always open the WebSocket regardless
       try {
         const session = await fetchAuthSession();
-        if (cancelled || !session.tokens) return;
-
-        const { userId: uid } = await getCurrentUser();
-        if (cancelled) return;
-
-        setUserId(uid);
-        setIsLoggedIn(true);
-
-        // Warm up the explainability Lambda so first real click avoids cold start
-        fetch("https://mera3wkzuj.execute-api.us-west-2.amazonaws.com/request-redirector", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ latitude: 39.5, longitude: -106.0 }),
-        }).catch(() => {/* intentionally ignored */});
-
-        ws = new WebSocket(WS_URL);
-        wsRef.current = ws;
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data as string) as ReactionMarker;
-            if (
-              data.reactionId &&
-              data.latitude != null &&
-              data.longitude != null &&
-              typeof data.reactionType === "string" &&
-              isValidReactionType(data.reactionType)
-            ) {
-              setReactions(prev => [...prev, data]);
-            } else {
-              console.warn("Dropping WebSocket reaction — missing fields or unknown reactionType:", data);
-            }
-          } catch {
-            console.error("Failed to parse WebSocket message:", event.data);
+        if (!cancelled && session.tokens) {
+          const { userId: uid } = await getCurrentUser();
+          if (!cancelled) {
+            setUserId(uid);
+            setIsLoggedIn(true);
           }
-        };
-
-        ws.onerror = (err) => console.error("WebSocket error:", err);
-        ws.onclose = (evt) => console.warn(`WebSocket closed — code: ${evt.code}, reason: "${evt.reason}"`);
+        }
       } catch {
-        // Not authenticated — no WebSocket
+        // Not authenticated — continue as anonymous
       }
+
+      if (cancelled) return;
+
+      ws = new WebSocket(WS_URL);
+      wsRef.current = ws;
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data as string) as ReactionMarker;
+          if (
+            data.reactionId &&
+            data.latitude != null &&
+            data.longitude != null &&
+            typeof data.reactionType === "string" &&
+            isValidReactionType(data.reactionType)
+          ) {
+            setReactions(prev => [...prev, data]);
+          } else {
+            console.warn("Dropping WebSocket reaction — missing fields or unknown reactionType:", data);
+          }
+        } catch {
+          console.error("Failed to parse WebSocket message:", event.data);
+        }
+      };
+
+      ws.onerror = (err) => console.error("WebSocket error:", err);
+      ws.onclose = (evt) => console.warn(`WebSocket closed — code: ${evt.code}, reason: "${evt.reason}"`);
     })();
 
     return () => {
@@ -128,15 +124,16 @@ export default function Map() {
 
   const sendReaction = useCallback(
     (reactionType: ReactionType, message: string) => {
-      if (wsRef.current?.readyState !== WebSocket.OPEN || !pendingLocation || !userId) return;
-      wsRef.current.send(JSON.stringify({
+      if (wsRef.current?.readyState !== WebSocket.OPEN || !pendingLocation) return;
+      const payload: Record<string, unknown> = {
         action: "sendReaction",
         reactionType,
         message,
         latitude: pendingLocation.lat,
         longitude: pendingLocation.lng,
-        userId,
-      }));
+      };
+      if (userId) payload.userId = userId;
+      wsRef.current.send(JSON.stringify(payload));
       setPendingLocation(null);
     },
     [pendingLocation, userId]
@@ -148,6 +145,7 @@ export default function Map() {
       justifyContent: "center",
       alignItems: "flex-start",
       height: "calc(100vh - 64px)",
+      overflow: "hidden",
       bgcolor: "#0f1b2d",
       p: 3,
     }}>
@@ -162,7 +160,7 @@ export default function Map() {
               reactions={reactions}
               pendingLocation={pendingLocation}
               onLocationSelect={(lat, lng) => {
-                if (isLoggedIn) setPendingLocation({ lat, lng });
+                setPendingLocation({ lat, lng });
               }}
             />
           </MapErrorBoundary>
@@ -200,12 +198,14 @@ export default function Map() {
         </Box>
       </Box>
 
-      <Sidebar
-        onSubmit={setSubmittedCoords}
-        sendReaction={sendReaction}
-        pendingLocation={pendingLocation}
-        isLoggedIn={isLoggedIn}
-      />
+      <Box sx={{ height: "100%", pt: "40px", boxSizing: "border-box", flexShrink: 0 }}>
+        <Sidebar
+          onSubmit={setSubmittedCoords}
+          sendReaction={sendReaction}
+          pendingLocation={pendingLocation}
+          isLoggedIn={isLoggedIn}
+        />
+      </Box>
     </Box>
   );
 }

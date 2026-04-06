@@ -17,7 +17,7 @@ if not IS_LAMBDA:
     load_dotenv()
 
 # Set names of S3 bucket and explainability model
-S3_BUCKET = os.environ.get("S3_BUCKET", "location-data-app-bucket")
+S3_BUCKET = os.environ.get("S3_BUCKET", "explain-model-bucket-west2")
 MODEL_NAME = os.environ.get("MODEL_NAME", "explainable-inference")
 
 KEY = "daily-grid-scores/latest/daily_map_grid_scores.csv"
