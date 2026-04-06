@@ -1,74 +1,88 @@
-/* --- Global Page Wrapper --- */
+/* ── Slab Lab Account Page ───────────────────────────────────────────────── */
+
 .account-page-wrapper {
     min-height: 100vh;
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    /* Cool, snowy background gradient */
-    background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
+    background: linear-gradient(135deg, #0D0A1A 0%, #1E1432 60%, #150E2A 100%);
     padding: 2rem 1rem;
 }
 
-/* --- Amplify UI Authenticator Overrides --- */
+/* ── Amplify Authenticator overrides ─────────────────────────────────────── */
 [data-amplify-authenticator] {
-    --amplify-colors-background-primary: #ffffff;
-    --amplify-colors-brand-primary-10: #e0f2fe;
-    /* Very light ice blue */
-    --amplify-colors-brand-primary-80: #0ea5e9;
-    /* Professional Ice Blue */
-    --amplify-colors-brand-primary-90: #0284c7;
-    /* Darker blue for hover states */
-    --amplify-colors-brand-primary-100: #0369a1;
+    --amplify-colors-background-primary: #1E1432;
+    --amplify-colors-background-secondary: #150E2A;
+    --amplify-colors-brand-primary-10: rgba(255, 45, 120, 0.1);
+    --amplify-colors-brand-primary-80: #FF2D78;
+    --amplify-colors-brand-primary-90: #e02268;
+    --amplify-colors-brand-primary-100: #bf1a58;
 
-    --amplify-colors-font-interactive: #0f172a;
-    /* Deep slate for text */
-    --amplify-components-button-border-radius: 6px;
-    --amplify-components-fieldcontrol-border-radius: 6px;
+    --amplify-colors-font-primary: #F0F8FF;
+    --amplify-colors-font-secondary: rgba(240, 248, 255, 0.65);
+    --amplify-colors-font-interactive: #F0F8FF;
 
-    --amplify-components-tabs-item-active-border-color: var(--amplify-colors-brand-primary-80);
-    --amplify-components-tabs-item-active-color: var(--amplify-colors-brand-primary-80);
+    --amplify-components-button-border-radius: 8px;
+    --amplify-components-fieldcontrol-border-radius: 8px;
+    --amplify-components-fieldcontrol-border-color: rgba(240,248,255,0.15);
+    --amplify-components-fieldcontrol-color: #F0F8FF;
+    --amplify-components-fieldcontrol-background-color: rgba(240,248,255,0.05);
 
-    box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
-    border-radius: 12px;
+    --amplify-components-tabs-item-active-border-color: #FF2D78;
+    --amplify-components-tabs-item-active-color: #FF2D78;
+
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,45,120,0.1);
+    border-radius: 16px;
     overflow: hidden;
 }
 
-/* --- Custom Header for Authenticator --- */
+/* ── Custom header for Authenticator ─────────────────────────────────────── */
 .auth-custom-header {
     text-align: center;
     padding: 2rem 1.5rem 1rem;
-    background-color: #0f172a;
-    /* Deep Alpine Slate */
+    background: linear-gradient(135deg, #0D0A1A 0%, #1E1432 100%);
+    border-bottom: 1px solid rgba(255, 45, 120, 0.15);
 }
 
 .auth-title {
-    font-weight: 800 !important;
-    letter-spacing: -0.025em !important;
-    color: #f8fafc !important;
+    font-family: 'Righteous', system-ui, sans-serif !important;
+    font-weight: 400 !important;
+    letter-spacing: 0.08em !important;
+    color: #F0F8FF !important;
     margin: 0 !important;
+    background: linear-gradient(135deg, #FF2D78 0%, #BF5FFF 50%, #00D4FF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .auth-subtitle {
-    color: #94a3b8 !important;
+    color: rgba(240,248,255,0.5) !important;
+    font-family: 'Space Grotesk', system-ui, sans-serif !important;
     text-transform: uppercase;
-    letter-spacing: 0.05em !important;
+    letter-spacing: 0.1em !important;
+    font-size: 0.65rem !important;
     margin-top: 0.5rem !important;
     display: block !important;
 }
 
-/* --- Logged-In Profile Card (MUI Paper) --- */
+/* ── Logged-in profile card ───────────────────────────────────────────────── */
 .profile-card {
     padding: 2.5rem !important;
-    border-radius: 12px !important;
+    border-radius: 16px !important;
     width: 100%;
     max-width: 450px;
     margin: 0 auto;
     transition: max-width 0.25s ease;
+    background: #1E1432 !important;
+    border: 1px solid rgba(255,45,120,0.15) !important;
 }
 
 .profile-heading {
-    font-weight: 700 !important;
-    color: #0f172a !important;
+    font-family: 'Righteous', system-ui, sans-serif !important;
+    font-weight: 400 !important;
+    letter-spacing: 0.04em !important;
+    color: #F0F8FF !important;
     margin-bottom: 1.5rem !important;
 }
 
@@ -79,16 +93,15 @@
     margin-bottom: 1.5rem;
 }
 
-/* --- MUI Avatar Override --- */
 .profile-avatar {
     width: 60px !important;
     height: 60px !important;
-    background-color: #0ea5e9 !important;
-    /* Ice Blue */
+    background: linear-gradient(135deg, #00E5CC 0%, #0088FF 100%) !important;
     color: #ffffff !important;
     font-size: 1.5rem !important;
     font-weight: 700 !important;
-    box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.3);
+    font-family: 'Space Grotesk', sans-serif !important;
+    box-shadow: 0 4px 16px rgba(0, 229, 204, 0.35) !important;
 }
 
 .profile-details {
@@ -98,62 +111,63 @@
 
 .profile-name {
     font-weight: 600 !important;
-    color: #0f172a !important;
+    color: #F0F8FF !important;
     line-height: 1.2 !important;
 }
 
 .profile-email {
-    color: #64748b !important;
+    color: rgba(240,248,255,0.5) !important;
     margin-top: 0.25rem !important;
 }
 
-/* --- MUI Divider Override --- */
 .profile-divider {
-    border-color: #e2e8f0 !important;
+    border-color: rgba(240,248,255,0.08) !important;
     margin-bottom: 1.5rem !important;
 }
 
-/* --- Meta Info --- */
 .profile-meta {
     margin-bottom: 2rem;
 }
 
 .meta-label {
     font-weight: 600 !important;
-    color: #94a3b8 !important;
+    color: rgba(240,248,255,0.4) !important;
     text-transform: uppercase;
-    margin-bottom: 0.25rem !important;
+    letter-spacing: 0.08em !important;
+    font-size: 0.65rem !important;
+    margin-bottom: 0.35rem !important;
     display: block !important;
 }
 
 .meta-value {
-    color: #475569 !important;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
-    background-color: #f8fafc;
-    padding: 0.5rem;
-    border-radius: 4px;
-    border: 1px solid #e2e8f0;
+    color: rgba(240,248,255,0.7) !important;
+    font-family: 'Space Mono', ui-monospace, monospace !important;
+    background-color: rgba(240,248,255,0.04);
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    border: 1px solid rgba(240,248,255,0.08);
     word-break: break-all;
+    font-size: 0.8rem !important;
 }
 
-/* --- MUI Button Override --- */
 .btn-signout {
-    color: #dc2626 !important;
-    /* High-vis safety red */
-    border-color: #dc2626 !important;
+    color: #FF2D78 !important;
+    border-color: rgba(255,45,120,0.4) !important;
     border-width: 1px !important;
     font-weight: 600 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
     padding: 0.75rem 1rem !important;
     text-transform: none !important;
-    /* Removes default MUI uppercase */
     transition: all 0.2s ease-in-out;
+    border-radius: 8px !important;
 }
 
 .btn-signout:hover {
-    background-color: #fef2f2 !important;
-    border-color: #dc2626 !important;
+    background-color: rgba(255, 45, 120, 0.08) !important;
+    border-color: #FF2D78 !important;
+    box-shadow: 0 0 16px rgba(255,45,120,0.2) !important;
 }
 
 .btn-signout:active {
-    background-color: #fee2e2 !important;
+    background-color: rgba(255, 45, 120, 0.15) !important;
 }

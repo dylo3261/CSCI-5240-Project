@@ -215,8 +215,8 @@ useEffect(() => {
     if (!result || !location) return;
     const directionSymbol = (d: string) => d === "positive" ? "↑" : d === "negative" ? "↓" : " ";
     const lines = [
-      "AVALANCHE RISK REPORT",
-      "=====================",
+      "SLAB LAB — RISK REPORT",
+      "=======================",
       `Date:       ${new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}`,
       `Location:   ${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`,
       "",
@@ -247,7 +247,7 @@ useEffect(() => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `avalanche-risk-${location.lat.toFixed(3)}-${location.lng.toFixed(3)}.txt`;
+    a.download = `slab-lab-risk-${location.lat.toFixed(3)}-${location.lng.toFixed(3)}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -260,10 +260,10 @@ useEffect(() => {
         right: 16,
         zIndex: 1000,
         width: 310,
-        bgcolor: "#0a1628",
-        border: "1px solid rgba(255,255,255,0.1)",
+        bgcolor: "#150E2A",
+        border: "1px solid rgba(255,45,120,0.2)",
         borderRadius: 3,
-        boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,45,120,0.05)",
         opacity: 0,
         transform: "translateY(-12px)",
         animation: "explainability-card-in 0.25s ease forwards",
@@ -288,13 +288,13 @@ useEffect(() => {
           px: 2,
           py: 1.5,
           borderBottom: "1px solid rgba(255,255,255,0.07)",
-          bgcolor: "rgba(255,255,255,0.03)",
+          bgcolor: "rgba(255,45,120,0.04)",
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <InfoOutlinedIcon sx={{ color: "rgba(255,255,255,0.5)", fontSize: 16 }} />
-          <Typography variant="caption" fontWeight={700} color="rgba(255,255,255,0.7)" textTransform="uppercase" letterSpacing={0.8} fontSize={10}>
-            Model Explainability
+          <InfoOutlinedIcon sx={{ color: "#FF2D78", fontSize: 16 }} />
+          <Typography variant="caption" fontWeight={700} color="rgba(240,248,255,0.7)" textTransform="uppercase" letterSpacing={0.8} fontSize={10} fontFamily="'Righteous', sans-serif">
+            Slab Analysis
           </Typography>
           {loading && <CircularProgress size={10} thickness={5} sx={{ color: "rgba(255,255,255,0.4)" }} />}
         </Box>

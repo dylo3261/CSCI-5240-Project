@@ -1,11 +1,49 @@
+/* ── Slab Lab Design Tokens ─────────────────────────────────────────────── */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Night Ski palette */
+  --sl-night:         #0D0A1A;
+  --sl-night-mid:     #150E2A;
+  --sl-night-surface: #1E1432;
+  --sl-night-raised:  #261A42;
+
+  /* Neon accents */
+  --sl-pink:          #FF2D78;
+  --sl-pink-light:    #FF79B0;
+  --sl-pink-glow:     rgba(255, 45, 120, 0.25);
+
+  --sl-blue:          #00D4FF;
+  --sl-blue-mid:      #0088FF;
+  --sl-blue-glow:     rgba(0, 212, 255, 0.2);
+
+  --sl-teal:          #00E5CC;
+  --sl-teal-glow:     rgba(0, 229, 204, 0.2);
+
+  --sl-orange:        #FF6B35;
+  --sl-orange-bright: #FFAA00;
+
+  --sl-purple:        #BF5FFF;
+
+  /* Snow white scale */
+  --sl-snow:    #F0F8FF;
+  --sl-snow-70: rgba(240, 248, 255, 0.7);
+  --sl-snow-45: rgba(240, 248, 255, 0.45);
+  --sl-snow-20: rgba(240, 248, 255, 0.2);
+  --sl-snow-10: rgba(240, 248, 255, 0.1);
+  --sl-snow-06: rgba(240, 248, 255, 0.06);
+  --sl-snow-04: rgba(240, 248, 255, 0.04);
+
+  /* Typography */
+  --font-display: 'Righteous', system-ui, sans-serif;
+  --font-body:    'Space Grotesk', system-ui, sans-serif;
+  --font-mono:    'Space Mono', ui-monospace, monospace;
+
+  font-family: var(--font-body);
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color-scheme: dark;
+  color: var(--sl-snow);
+  background-color: var(--sl-night);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -15,11 +53,11 @@
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--sl-teal);
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: var(--sl-blue);
 }
 
 body {
@@ -30,9 +68,8 @@ body {
   min-height: 100vh;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
 }
 
 button {
@@ -41,28 +78,15 @@ button {
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+  font-family: var(--font-body);
+  background-color: var(--sl-night-surface);
   cursor: pointer;
   transition: border-color 0.25s;
 }
 button:hover {
-  border-color: #646cff;
+  border-color: var(--sl-pink);
 }
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
 }

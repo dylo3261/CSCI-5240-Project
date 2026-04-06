@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { 
-  Button, 
-  TextField, 
-  Divider, 
-  Box, 
-  Typography, 
-  Paper, 
-  Collapse 
+import {
+  Button,
+  TextField,
+  Divider,
+  Box,
+  Typography,
+  Paper,
+  Collapse,
 } from "@mui/material";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -14,13 +14,13 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import type { ReactionType } from "./MapComponent";
 
 const REACTIONS: { type: ReactionType; emoji: string; label: string }[] = [
-  { type: "icy",        emoji: "❄️", label: "Icy"        },
-  { type: "powder",     emoji: "⛷️", label: "Powder"     },
-  { type: "bluebird",   emoji: "☀️", label: "Bluebird"   },
-  { type: "crowded",    emoji: "👥", label: "Crowded"    },
+  { type: "icy", emoji: "❄️", label: "Icy" },
+  { type: "powder", emoji: "⛷️", label: "Powder" },
+  { type: "bluebird", emoji: "☀️", label: "Bluebird" },
+  { type: "crowded", emoji: "👥", label: "Crowded" },
   { type: "heavy_snow", emoji: "🌨️", label: "Heavy Snow" },
-  { type: "foggy",      emoji: "🌫️", label: "Foggy"      },
-  { type: "sketchy",    emoji: "⚠️", label: "Sketchy"    },
+  { type: "foggy", emoji: "🌫️", label: "Foggy" },
+  { type: "sketchy", emoji: "⚠️", label: "Sketchy" },
 ];
 
 interface SidebarProps {
@@ -30,7 +30,11 @@ interface SidebarProps {
   isLoggedIn: boolean;
 }
 
-export default function Sidebar({ onSubmit, sendReaction, pendingLocation }: SidebarProps) {
+export default function Sidebar({
+  onSubmit,
+  sendReaction,
+  pendingLocation,
+}: SidebarProps) {
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [selectedType, setSelectedType] = useState<ReactionType | null>(null);
@@ -50,7 +54,7 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation }: Sid
             latitude: parseFloat(lat),
             longitude: parseFloat(lng),
           }),
-        }
+        },
       );
       if (!response.ok) throw new Error(`API error: ${response.status}`);
       const data = await response.json();
@@ -72,67 +76,101 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation }: Sid
   const inputSx = {
     "& .MuiOutlinedInput-root": {
       color: "#fff",
-      "& fieldset": { borderColor: "rgba(255,255,255,0.15)" },
-      "&:hover fieldset": { borderColor: "rgba(255,255,255,0.3)" },
-      "&.Mui-focused fieldset": { borderColor: "rgba(255,255,255,0.3)" },
+      "& fieldset": { borderColor: "rgba(240,248,255,0.15)" },
+      "&:hover fieldset": { borderColor: "rgba(240,248,255,0.3)" },
+      "&.Mui-focused fieldset": { borderColor: "rgba(240,248,255,0.3)" },
     },
-    "& .MuiInputLabel-root": { color: "rgba(255,255,255,0.45)" },
-    "& .MuiInputLabel-root.Mui-focused": { color: "rgba(255,255,255,0.3)" },
+    "& .MuiInputLabel-root": { color: "rgba(240,248,255,0.45)" },
+    "& .MuiInputLabel-root.Mui-focused": { color: "rgba(240,248,255,0.3)" },
   };
 
   return (
-    <Paper elevation={4} sx={{
-      width: 280,
-      height: "100%",
-      boxSizing: "border-box",
-      bgcolor: "#0a1628",
-      border: "1px solid rgba(255,255,255,0.08)",
-      borderRadius: 3,
-      p: 2.5,
-      display: "flex",
-      flexDirection: "column",
-      gap: 2.5,
-      overflowY: "auto",
-    }}>
-
+    <Paper
+      elevation={4}
+      sx={{
+        width: 280,
+        height: "100%",
+        boxSizing: "border-box",
+        bgcolor: "#150E2A",
+        border: "1px solid rgba(255,45,120,0.15)",
+        borderRadius: 3,
+        p: 2.5,
+        display: "flex",
+        flexDirection: "column",
+        gap: 2.5,
+        overflowY: "auto",
+      }}
+    >
       {/* ── Drop a Reaction (Now the primary focus) ── */}
       <Box>
-        <Typography variant="h6" fontWeight={700} color="#fff" mb={0.5}>
-          Current Conditions
+        <Typography
+          variant="h6"
+          mb={0.5}
+          sx={{ fontFamily: "'Righteous', sans-serif", color: "#F0F8FF", letterSpacing: "0.03em" }}
+        >
+          Mountain Conditions
         </Typography>
-        <Typography variant="body2" color="rgba(255,255,255,0.6)" mb={2}>
-          Click the map to select a location, then drop a reaction below.
+        <Typography variant="body2" color="rgba(240,248,255,0.55)" mb={2}>
+          Click the map to drop a pin, then share your vibe below.
         </Typography>
 
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-
           {/* Pinned location indicator - moved up for logical flow */}
-          <Box sx={{ bgcolor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 2, p: 1.5 }}>
-            <Typography variant="caption" color="rgba(255,255,255,0.4)" display="block" mb={0.5} textTransform="uppercase" letterSpacing={0.5} fontSize={10}>
+          <Box
+            sx={{
+              bgcolor: "rgba(240,248,255,0.04)",
+              border: "1px solid rgba(240,248,255,0.08)",
+              borderRadius: 2,
+              p: 1.5,
+            }}
+          >
+            <Typography
+              variant="caption"
+              color="rgba(240,248,255,0.4)"
+              display="block"
+              mb={0.5}
+              textTransform="uppercase"
+              letterSpacing={0.5}
+              fontSize={10}
+            >
               Selected Location
             </Typography>
             {pendingLocation ? (
-              <Typography variant="body2" color="#fff" fontFamily="monospace" fontWeight={500}>
-                {pendingLocation.lat.toFixed(4)}, {pendingLocation.lng.toFixed(4)}
+              <Typography
+                variant="body2"
+                color="#fff"
+                fontFamily="monospace"
+                fontWeight={500}
+              >
+                {pendingLocation.lat.toFixed(4)},{" "}
+                {pendingLocation.lng.toFixed(4)}
               </Typography>
             ) : (
-              <Typography variant="body2" color="rgba(255,255,255,0.4)" fontStyle="italic">
+              <Typography
+                variant="body2"
+                color="rgba(240,248,255,0.4)"
+                fontStyle="italic"
+              >
                 No location selected
               </Typography>
             )}
           </Box>
 
           {/* Emoji type selector using CSS Grid */}
-          <Box sx={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 1.25
-          }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 1.25,
+            }}
+          >
             {REACTIONS.map(({ type, emoji, label }) => (
               <Button
                 key={type}
                 variant="outlined"
-                onClick={() => setSelectedType(prev => prev === type ? null : type)}
+                onClick={() =>
+                  setSelectedType((prev) => (prev === type ? null : type))
+                }
                 sx={{
                   flexDirection: "column",
                   textTransform: "none",
@@ -141,15 +179,20 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation }: Sid
                   lineHeight: 1.2,
                   gap: 0.5,
                   borderRadius: 2,
-                  borderColor: selectedType === type
-                    ? "rgba(255,255,255,0.8)"
-                    : "rgba(255,255,255,0.12)",
-                  color: selectedType === type ? "#fff" : "rgba(255,255,255,0.6)",
-                  bgcolor: selectedType === type ? "rgba(255,255,255,0.1)" : "transparent",
+                  borderColor:
+                    selectedType === type
+                      ? "rgba(240,248,255,0.8)"
+                      : "rgba(240,248,255,0.12)",
+                  color:
+                    selectedType === type ? "#fff" : "rgba(240,248,255,0.6)",
+                  bgcolor:
+                    selectedType === type
+                      ? "rgba(240,248,255,0.1)"
+                      : "transparent",
                   transition: "all 0.2s ease-in-out",
                   "&:hover": {
-                    borderColor: "rgba(255,255,255,0.5)",
-                    bgcolor: "rgba(255,255,255,0.06)",
+                    borderColor: "rgba(240,248,255,0.5)",
+                    bgcolor: "rgba(240,248,255,0.06)",
                   },
                 }}
               >
@@ -164,7 +207,7 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation }: Sid
             label="Message (optional)"
             placeholder="What's it like out there?"
             value={message}
-            onChange={e => setMessage(e.target.value)}
+            onChange={(e) => setMessage(e.target.value)}
             size="small"
             fullWidth
             multiline
@@ -184,33 +227,53 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation }: Sid
               fontSize: 14,
               py: 1.25,
               borderRadius: 2,
-              bgcolor: "#1565c0",
-              "&:hover": { bgcolor: "#1976d2" },
+              background: "linear-gradient(135deg, #FF2D78 0%, #BF5FFF 100%)",
+              boxShadow: "0 0 16px rgba(255,45,120,0.35)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #FF2D78 0%, #0088FF 100%)",
+                boxShadow: "0 0 24px rgba(255,45,120,0.5)",
+              },
               "&.Mui-disabled": {
-                bgcolor: "rgba(255,255,255,0.05)",
-                color: "rgba(255,255,255,0.2)",
+                bgcolor: "rgba(240,248,255,0.05)",
+                color: "rgba(240,248,255,0.2)",
+                background: "none",
+                boxShadow: "none",
               },
             }}
           >
-            Post Reaction
+            Post Vibe
           </Button>
 
           {/* Avalanche reporting disclaimer */}
-          <Box sx={{
-            bgcolor: "rgba(183,28,28,0.15)",
-            border: "1px solid rgba(183,28,28,0.4)",
-            borderRadius: 2,
-            p: 1.5,
-          }}>
-            <Typography variant="caption" color="rgba(255,255,255,0.9)" fontWeight={600} display="block" mb={0.5}>
+          <Box
+            sx={{
+              bgcolor: "rgba(183,28,28,0.15)",
+              border: "1px solid rgba(183,28,28,0.4)",
+              borderRadius: 2,
+              p: 1.5,
+            }}
+          >
+            <Typography
+              variant="caption"
+              color="rgba(240,248,255,0.9)"
+              fontWeight={600}
+              display="block"
+              mb={0.5}
+            >
               💀 Witnessed an avalanche?
             </Typography>
-            <Typography variant="caption" color="rgba(255,255,255,0.65)" display="block" lineHeight={1.5}>
-              Please report it directly to the Colorado Avalanche Information Center (CAIC). Official reports help keep everyone safe.
+            <Typography
+              variant="caption"
+              color="rgba(240,248,255,0.65)"
+              display="block"
+              lineHeight={1.5}
+            >
+              Please report it directly to the Colorado Avalanche Information
+              Center (CAIC). Official reports help keep everyone safe.
             </Typography>
             <Typography
               component="a"
-              href="https://avalanche.state.co.us/observations/report"
+              href="https://avalanche.state.co.us/observations/observation-report"
               target="_blank"
               rel="noopener noreferrer"
               variant="caption"
@@ -229,32 +292,40 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation }: Sid
         </Box>
       </Box>
 
-      <Divider sx={{ borderColor: "rgba(255,255,255,0.08)" }} />
+      <Divider sx={{ borderColor: "rgba(240,248,255,0.08)" }} />
 
       {/* ── Collapsible Location Search ── */}
       <Box>
-        <Button 
-          fullWidth 
+        <Button
+          fullWidth
           onClick={() => setShowManualEntry(!showManualEntry)}
           endIcon={showManualEntry ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          sx={{ 
-            color: "rgba(255,255,255,0.5)", 
+          sx={{
+            color: "rgba(240,248,255,0.5)",
             textTransform: "none",
             justifyContent: "space-between",
             px: 1,
-            "&:hover": { bgcolor: "rgba(255,255,255,0.05)", color: "#fff" }
+            "&:hover": { bgcolor: "rgba(240,248,255,0.05)", color: "#fff" },
           }}
         >
           Enter coordinates manually
         </Button>
 
         <Collapse in={showManualEntry}>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, mt: 2, p: 1 }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 1.5,
+              mt: 2,
+              p: 1,
+            }}
+          >
             <TextField
               label="Latitude"
               placeholder="e.g. 39.7392"
               value={lat}
-              onChange={e => setLat(e.target.value)}
+              onChange={(e) => setLat(e.target.value)}
               size="small"
               fullWidth
               sx={inputSx}
@@ -263,7 +334,7 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation }: Sid
               label="Longitude"
               placeholder="e.g. -104.9903"
               value={lng}
-              onChange={e => setLng(e.target.value)}
+              onChange={(e) => setLng(e.target.value)}
               size="small"
               fullWidth
               sx={inputSx}
@@ -276,13 +347,13 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation }: Sid
               sx={{
                 textTransform: "none",
                 fontWeight: 600,
-                color: "rgba(255,255,255,0.7)",
-                borderColor: "rgba(255,255,255,0.2)",
+                color: "rgba(240,248,255,0.7)",
+                borderColor: "rgba(240,248,255,0.2)",
                 borderRadius: 2,
                 "&:hover": {
-                  borderColor: "rgba(255,255,255,0.5)",
+                  borderColor: "rgba(240,248,255,0.5)",
                   color: "#fff",
-                  bgcolor: "rgba(255,255,255,0.05)",
+                  bgcolor: "rgba(240,248,255,0.05)",
                 },
               }}
             >
@@ -291,7 +362,6 @@ export default function Sidebar({ onSubmit, sendReaction, pendingLocation }: Sid
           </Box>
         </Collapse>
       </Box>
-
     </Paper>
   );
 }

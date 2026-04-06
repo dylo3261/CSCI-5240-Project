@@ -31,7 +31,7 @@ class MapErrorBoundary extends Component<{ children: ReactNode }, MapErrorBounda
   render() {
     if (this.state.hasError) {
       return (
-        <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "#0f1b2d" }}>
+        <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "#0D0A1A" }}>
           <Typography color="error" variant="body2">
             Map failed to render a pin. Reload the map to retry.
           </Typography>
@@ -139,73 +139,108 @@ export default function Map() {
     [pendingLocation, userId]
   );
 
-  return (
-    <Box sx={{
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "flex-start",
-      height: "calc(100vh - 64px)",
-      overflow: "hidden",
-      bgcolor: "#0f1b2d",
-      p: 3,
-    }}>
-      <Box sx={{ flex: 1, height: "100%", minWidth: 0 }}>
-        <Typography variant="h6" sx={{ color: "#fff", mb: 2 }}>
-          Avalanche Risk Map
-        </Typography>
-        <Box sx={{ position: "relative", height: "calc(100% - 48px)", borderRadius: 3, overflow: "hidden" }}>
-          <MapErrorBoundary>
-            <MapComponent
-              coords={submittedCoords}
-              reactions={reactions}
-              pendingLocation={pendingLocation}
-              onLocationSelect={(lat, lng) => {
-                setPendingLocation({ lat, lng });
-              }}
-            />
-          </MapErrorBoundary>
+  const FOOTER_H = 36;
+  const NAVBAR_H = 48;
 
-          {/* Legend overlay */}
-          <Box sx={{
-            position: "absolute",
-            bottom: 24,
-            left: 16,
-            zIndex: 1000,
-            bgcolor: "rgba(10, 22, 40, 0.85)",
-            backdropFilter: "blur(8px)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: 2,
-            p: 1.5,
-            minWidth: 160,
-          }}>
-            <Typography variant="caption" color="rgba(255,255,255,0.4)"
-              display="block" mb={1} letterSpacing={0.5} textTransform="uppercase" fontSize={10}>
-              Avalanche Risk
-            </Typography>
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", height: `calc(100vh - ${NAVBAR_H}px)`, bgcolor: "#0D0A1A" }}>
+
+      {/* ── Map + Sidebar ── */}
+      <Box sx={{
+        flex: 1,
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "flex-start",
+        overflow: "hidden",
+        minHeight: 0,
+        p: 1.5,
+        gap: 1.5,
+      }}>
+        <Box sx={{ flex: 1, height: "100%", minWidth: 0, position: "relative" }}>
+          <Box sx={{ position: "relative", height: "100%", borderRadius: 3, overflow: "hidden" }}>
+            <MapErrorBoundary>
+              <MapComponent
+                coords={submittedCoords}
+                reactions={reactions}
+                pendingLocation={pendingLocation}
+                onLocationSelect={(lat, lng) => {
+                  setPendingLocation({ lat, lng });
+                }}
+              />
+            </MapErrorBoundary>
+
+            {/* Legend overlay */}
             <Box sx={{
-              height: 10,
-              borderRadius: 1,
-              mb: 0.75,
-              background: `linear-gradient(to right, ${
-                Array.from({ length: 10 }, (_, i) => getColor(i / 9)).join(", ")
-              })`,
-            }} />
-            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-              <Typography variant="caption" color="rgba(255,255,255,0.3)" fontSize={10}>Low</Typography>
-              <Typography variant="caption" color="rgba(255,255,255,0.3)" fontSize={10}>High</Typography>
+              position: "absolute",
+              bottom: 20,
+              left: 14,
+              zIndex: 1000,
+              bgcolor: "rgba(13, 10, 26, 0.88)",
+              backdropFilter: "blur(8px)",
+              border: "1px solid rgba(255,45,120,0.2)",
+              borderRadius: 2,
+              p: 1.5,
+              minWidth: 150,
+            }}>
+              <Typography variant="caption" color="rgba(255,255,255,0.4)"
+                display="block" mb={1} letterSpacing={0.5} textTransform="uppercase" fontSize={10}>
+                Slab Risk
+              </Typography>
+              <Box sx={{
+                height: 10,
+                borderRadius: 1,
+                mb: 0.75,
+                background: `linear-gradient(to right, ${
+                  Array.from({ length: 10 }, (_, i) => getColor(i / 9)).join(", ")
+                })`,
+              }} />
+              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                <Typography variant="caption" color="rgba(255,255,255,0.3)" fontSize={10}>Low</Typography>
+                <Typography variant="caption" color="rgba(255,255,255,0.3)" fontSize={10}>High</Typography>
+              </Box>
             </Box>
           </Box>
         </Box>
+
+        <Box sx={{ height: "100%", flexShrink: 0 }}>
+          <Sidebar
+            onSubmit={setSubmittedCoords}
+            sendReaction={sendReaction}
+            pendingLocation={pendingLocation}
+            isLoggedIn={isLoggedIn}
+          />
+        </Box>
       </Box>
 
-      <Box sx={{ height: "100%", pt: "40px", boxSizing: "border-box", flexShrink: 0 }}>
-        <Sidebar
-          onSubmit={setSubmittedCoords}
-          sendReaction={sendReaction}
-          pendingLocation={pendingLocation}
-          isLoggedIn={isLoggedIn}
-        />
+      {/* ── Footer ── */}
+      <Box sx={{
+        height: FOOTER_H,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 3,
+        borderTop: "1px solid rgba(240,248,255,0.06)",
+        px: 3,
+        flexShrink: 0,
+      }}>
+        <Typography variant="caption" color="rgba(240,248,255,0.25)" fontSize={10} letterSpacing="0.06em">
+          SLAB LAB · Colorado Backcountry Intelligence
+        </Typography>
+        <Typography
+          component="a"
+          href="https://avalanche.state.co.us"
+          target="_blank"
+          rel="noopener noreferrer"
+          variant="caption"
+          sx={{ color: "rgba(240,248,255,0.25)", fontSize: 10, letterSpacing: "0.06em", textDecoration: "none", "&:hover": { color: "#00E5CC" } }}
+        >
+          CAIC Data
+        </Typography>
+        <Typography variant="caption" color="rgba(240,248,255,0.25)" fontSize={10} letterSpacing="0.06em">
+          Not a substitute for official forecasts
+        </Typography>
       </Box>
+
     </Box>
   );
 }
