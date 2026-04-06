@@ -102,7 +102,6 @@ export default function MapComponent({
   const [cells, setCells] = useState<GridCell[]>([]);
   // Track which selected location has been dismissed so a new pin re-shows the card
   const [dismissedLocationKey, setDismissedLocationKey] = useState("");
-  const [cardOpen, setCardOpen] = useState(false);
   const pendingLocationKey = pendingLocation
     ? `${pendingLocation.lat},${pendingLocation.lng}`
     : null;
@@ -197,39 +196,10 @@ export default function MapComponent({
 
         <ReactionClusterLayer reactions={reactions} />
       </MapContainer>{" "}
-      {pendingLocation && !cardDismissed && !cardOpen && (
-        <button
-          onClick={() => setCardOpen(true)}
-          style={{
-            position: "absolute",
-            top: 16,
-            right: 16,
-            zIndex: 1000,
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "7px 14px",
-            background: "#0a1628",
-            border: "1px solid rgba(255,255,255,0.15)",
-            borderRadius: 20,
-            color: "rgba(255,255,255,0.85)",
-            fontSize: 12,
-            fontWeight: 600,
-            letterSpacing: 0.4,
-            cursor: "pointer",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
-          }}
-        >
-          <span style={{ fontSize: 14 }}>ⓘ</span>
-          Prediction Reasoning 
-        </button>
-      )}
-      {pendingLocation && !cardDismissed && (
+      {!cardDismissed && (
         <ExplainabilityCard
           location={pendingLocation}
-          open={cardOpen}
           onClose={() => {
-            setCardOpen(false);
             if (pendingLocationKey !== null) {
               setDismissedLocationKey(pendingLocationKey);
             }
