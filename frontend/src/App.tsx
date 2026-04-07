@@ -2,6 +2,7 @@ import './App.css';
 import { Amplify } from 'aws-amplify';
 import { awsConfig } from './aws-config';
 import '@aws-amplify/ui-react/styles.css';
+import slabLabLogo from "./assets/SlablabFabIco-Photoroom.png";
 
 Amplify.configure(awsConfig);
 import { useEffect, useState } from "react";
@@ -60,15 +61,11 @@ function Navbar() {
           to="/"
           sx={{ display: "flex", alignItems: "center", gap: 1.5, textDecoration: "none", flexGrow: 1 }}
         >
-          <Box sx={{
-            background: "linear-gradient(135deg, #FF2D78 0%, #BF5FFF 100%)",
-            boxShadow: "0 0 10px rgba(255,45,120,0.45)",
-            borderRadius: 1.5,
-            width: 30, height: 30,
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <AcUnitIcon sx={{ color: "#fff", fontSize: 18 }} />
-          </Box>
+          <img
+            src={slabLabLogo}
+            alt="Slab Lab"
+            style={{ height: 30, width: 30, borderRadius: 8 }}
+          />
           <Box>
             <Typography
               sx={{ fontFamily: "'Righteous', sans-serif", letterSpacing: "0.05em", lineHeight: 1, fontSize: "1.1rem", color: "#F0F8FF" }}
