@@ -45,10 +45,10 @@ const components = {
     return (
       <Box className="auth-custom-header">
         <Typography variant="h5" component="h1" className="auth-title">
-          Avalanche Predictor
+          SLAB LAB
         </Typography>
         <Typography variant="caption" component="p" className="auth-subtitle">
-          Backcountry Safety & Intelligence
+          Your Mountain Dashboard
         </Typography>
       </Box>
     );
@@ -254,7 +254,7 @@ function MyReactionsTab({ userId }: { userId: string | undefined }) {
             valueLabelFormat={formatSliderLabel}
             disableSwap
             sx={{
-              color: "#1565c0",
+              color: "#FF2D78",
               "& .MuiSlider-valueLabel": {
                 fontSize: 11,
                 bgcolor: "#0f172a",
