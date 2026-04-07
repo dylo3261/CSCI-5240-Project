@@ -142,6 +142,17 @@ function SectionHeader({ label, open, onToggle }: { label: string; open: boolean
   );
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isMobile;
+}
+
 
 interface Props {
   location: { lat: number; lng: number } | null;
@@ -150,6 +161,7 @@ interface Props {
 }
 
 export default function ExplainabilityCard({ location, open, onClose }: Props) {
+  const isMobile = useIsMobile();
   const [result, setResult] = useState<ExplainabilityResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -257,9 +269,13 @@ useEffect(() => {
       sx={{
         position: "absolute",
         top: 16,
-        right: 16,
-        zIndex: 1000,
-        width: 310,
+        // Desktop: anchor to right edge; Mobile: center it
+        ...(isMobile
+          ? { left: "50%", transform: "translateX(-50%)" }
+          : { right: 16 }
+        ),
+        zIndex: 1200,
+        width: isMobile ? "92%" : 310,
         bgcolor: "#150E2A",
         border: "1px solid rgba(255,45,120,0.2)",
         borderRadius: 3,
@@ -269,12 +285,12 @@ useEffect(() => {
         animation: "explainability-card-in 0.25s ease forwards",
         "@keyframes explainability-card-in": {
           from: {
-            opacity: 0,
-            transform: "translateY(-12px)",
+            opacity: 0, 
+            transform: isMobile ? "translateX(-50%) translateY(-12px)" : "translateY(-12px)"
           },
           to: {
-            opacity: 1,
-            transform: "translateY(0)",
+            opacity: 1, 
+            transform: isMobile ? "translateX(-50%) translateY(0)"    : "translateY(0)"
           },
         },
       }}

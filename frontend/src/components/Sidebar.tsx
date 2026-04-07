@@ -88,7 +88,9 @@ export default function Sidebar({
     <Paper
       elevation={4}
       sx={{
-        width: 280,
+        width: 350,
+        maxWidth: "100%",  // allows it to shrink on mobile inside the sheet
+        mx: "auto",
         height: "100%",
         boxSizing: "border-box",
         bgcolor: "#150E2A",
