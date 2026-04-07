@@ -65,7 +65,7 @@ export default function Sidebar({
   };
 
   const handlePost = () => {
-    if (!selectedType || !pendingLocation || !message.trim()) return;
+    if (!selectedType || !pendingLocation) return;
     sendReaction(selectedType, message.trim());
     setSelectedType(null);
     setMessage("");

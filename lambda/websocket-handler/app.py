@@ -69,10 +69,12 @@ def _send_reaction(event, sender_connection_id):
         "dataType":     "REACTION",
         "timestamp":    timestamp,
         "reactionType": body["reactionType"],
-        "message":      body.get("message", ""),
         "latitude":     Decimal(str(body["latitude"])),
         "longitude":    Decimal(str(body["longitude"])),
     }
+    msg = (body.get("message") or "").strip()
+    if msg:
+        item["message"] = msg
 
     if user_id:
         item["userId"] = user_id
@@ -88,10 +90,11 @@ def _send_reaction(event, sender_connection_id):
         "dataType":     "REACTION",
         "timestamp":    timestamp,
         "reactionType": body["reactionType"],
-        "message":      body.get("message", ""),
         "latitude":     body["latitude"],
         "longitude":    body["longitude"],
     }
+    if msg:
+        broadcast["message"] = msg
 
     if user_id:
         broadcast["userId"] = user_id

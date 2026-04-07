@@ -44,10 +44,18 @@ def lambda_handler(event, context):
     # Sort ascending by timestamp so the frontend gets an ordered list
     items.sort(key=lambda x: x["timestamp"])
 
-    # DynamoDB returns Decimal for numeric fields; convert to float for JSON
+    # DynamoDB returns Decimal for numeric fields; convert to float for JSON.
+    # Skip items missing required fields to prevent a single bad record from
+    # crashing the entire Lambda.
+    valid = []
     for item in items:
-        item["latitude"] = float(item["latitude"])
-        item["longitude"] = float(item["longitude"])
+        try:
+            item["latitude"] = float(item["latitude"])
+            item["longitude"] = float(item["longitude"])
+            valid.append(item)
+        except (KeyError, TypeError, ValueError):
+            pass
+    items = valid
 
     return {
         "statusCode": 200,
