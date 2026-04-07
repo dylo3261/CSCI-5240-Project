@@ -23,10 +23,10 @@ MODEL_NAME = os.environ.get("MODEL_NAME", "explainable-inference")
 KEY = "daily-grid-scores/latest/daily_map_grid_scores.csv"
 
 # Colorado bounds, may change is we make bounds smaller/more dynamic
-COLORADO_MAX_LAT = 41.001
-COLORADO_MIN_LAT = 36.999
-COLORADO_MAX_LON = -102.001
-COLORADO_MIN_LON = -109.001
+COLORADO_MAX_LAT = 40.9711
+COLORADO_MIN_LAT = 37.029
+COLORADO_MAX_LON = -105.3141
+COLORADO_MIN_LON = -109.05
 
 # Check if location is in Colorado / specified bounds
 def is_valid_location(longitude, latitude):
