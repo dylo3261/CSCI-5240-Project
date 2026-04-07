@@ -4,8 +4,6 @@ import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
 import MapComponent, { type ReactionMarker, type ReactionType } from "../components/MapComponent";
 import Sidebar from "../components/Sidebar";
 
-// Runtime-validated set of valid reaction types — prevents unrecognized server
-// values (e.g. wrong casing, renamed variants) from reaching the map renderer.
 const VALID_REACTION_TYPES = new Set<string>([
   "icy", "powder", "bluebird", "crowded", "heavy_snow", "foggy", "sketchy", "avalanche",
 ]);
@@ -14,20 +12,26 @@ function isValidReactionType(value: string): value is ReactionType {
   return VALID_REACTION_TYPES.has(value);
 }
 
-// Error Boundary wrapping only MapComponent so a bad pin never unmounts Map
-// (which would also close the WebSocket connection).
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isMobile;
+}
+
 interface MapErrorBoundaryState { hasError: boolean; error: Error | null }
 class MapErrorBoundary extends Component<{ children: ReactNode }, MapErrorBoundaryState> {
   state: MapErrorBoundaryState = { hasError: false, error: null };
-
   static getDerivedStateFromError(error: Error): MapErrorBoundaryState {
     return { hasError: true, error };
   }
-
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("MapComponent crashed — recovering via error boundary:", error, info);
   }
-
   render() {
     if (this.state.hasError) {
       return (
@@ -42,11 +46,8 @@ class MapErrorBoundary extends Component<{ children: ReactNode }, MapErrorBounda
   }
 }
 
-// Replace with the wss:// URL from the SAM stack output WebSocketApiEndpoint
 const WS_URL = "wss://j9jkzycsge.execute-api.us-west-2.amazonaws.com/prod";
-// Replace with the https:// URL from the SAM stack output FetchReactionsEndpoint
 const FETCH_REACTIONS_URL = "https://wpvtd43yyi.execute-api.us-west-2.amazonaws.com/reactions";
-
 const getColor = (v: number) => `hsl(${(1 - v) * 120}, 90%, 45%)`;
 
 export default function Map() {
@@ -55,9 +56,10 @@ export default function Map() {
   const [pendingLocation, setPendingLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userId, setUserId] = useState("");
+  const [sheetOpen, setSheetOpen] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const isMobile = useIsMobile();
 
-  // Load pins from the last 24 hours on mount
   useEffect(() => {
     fetch(FETCH_REACTIONS_URL)
       .then(r => {
@@ -73,22 +75,15 @@ export default function Map() {
     let cancelled = false;
 
     (async () => {
-      // Resolve auth state first, but always open the WebSocket regardless
       try {
         const session = await fetchAuthSession();
         if (!cancelled && session.tokens) {
           const { userId: uid } = await getCurrentUser();
-          if (!cancelled) {
-            setUserId(uid);
-            setIsLoggedIn(true);
-          }
+          if (!cancelled) { setUserId(uid); setIsLoggedIn(true); }
         }
-      } catch {
-        // Not authenticated — continue as anonymous
-      }
+      } catch { /* anonymous */ }
 
       if (cancelled) return;
-
       ws = new WebSocket(WS_URL);
       wsRef.current = ws;
 
@@ -96,11 +91,8 @@ export default function Map() {
         try {
           const data = JSON.parse(event.data as string) as ReactionMarker;
           if (
-            data.reactionId &&
-            data.latitude != null &&
-            data.longitude != null &&
-            typeof data.reactionType === "string" &&
-            isValidReactionType(data.reactionType)
+            data.reactionId && data.latitude != null && data.longitude != null &&
+            typeof data.reactionType === "string" && isValidReactionType(data.reactionType)
           ) {
             setReactions(prev => [...prev, data]);
           } else {
@@ -115,35 +107,39 @@ export default function Map() {
       ws.onclose = (evt) => console.warn(`WebSocket closed — code: ${evt.code}, reason: "${evt.reason}"`);
     })();
 
-    return () => {
-      cancelled = true;
-      ws?.close();
-      wsRef.current = null;
-    };
+    return () => { cancelled = true; ws?.close(); wsRef.current = null; };
   }, []);
 
   const sendReaction = useCallback(
     (reactionType: ReactionType, message: string) => {
       if (wsRef.current?.readyState !== WebSocket.OPEN || !pendingLocation) return;
       const payload: Record<string, unknown> = {
-        action: "sendReaction",
-        reactionType,
-        message,
-        latitude: pendingLocation.lat,
-        longitude: pendingLocation.lng,
+        action: "sendReaction", reactionType, message,
+        latitude: pendingLocation.lat, longitude: pendingLocation.lng,
       };
       if (userId) payload.userId = userId;
       wsRef.current.send(JSON.stringify(payload));
       setPendingLocation(null);
+      setSheetOpen(false);
     },
     [pendingLocation, userId]
   );
+
+  const handleLocationSelect = useCallback((lat: number, lng: number) => {
+    setPendingLocation({ lat, lng });
+    if (isMobile) setSheetOpen(true);
+  }, [isMobile]);
 
   const FOOTER_H = 36;
   const NAVBAR_H = 48;
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: `calc(100vh - ${NAVBAR_H}px)`, bgcolor: "#0D0A1A" }}>
+    <Box sx={{
+      display: "flex",
+      flexDirection: "column",
+      height: `calc(100vh - ${NAVBAR_H}px - env(safe-area-inset-bottom, 16px))`,
+      bgcolor: "#0D0A1A",
+    }}>
 
       {/* ── Map + Sidebar ── */}
       <Box sx={{
@@ -155,7 +151,10 @@ export default function Map() {
         minHeight: 0,
         p: 1.5,
         gap: 1.5,
+        position: "relative",
       }}>
+
+        {/* ── Map ── */}
         <Box sx={{ flex: 1, height: "100%", minWidth: 0, position: "relative" }}>
           <Box sx={{ position: "relative", height: "100%", borderRadius: 3, overflow: "hidden" }}>
             <MapErrorBoundary>
@@ -163,16 +162,14 @@ export default function Map() {
                 coords={submittedCoords}
                 reactions={reactions}
                 pendingLocation={pendingLocation}
-                onLocationSelect={(lat, lng) => {
-                  setPendingLocation({ lat, lng });
-                }}
+                onLocationSelect={handleLocationSelect}
               />
             </MapErrorBoundary>
 
             {/* Legend overlay */}
             <Box sx={{
               position: "absolute",
-              bottom: 20,
+              bottom: isMobile ? 60 : 20,
               left: 14,
               zIndex: 1000,
               bgcolor: "rgba(13, 10, 26, 0.88)",
@@ -187,60 +184,124 @@ export default function Map() {
                 Slab Risk
               </Typography>
               <Box sx={{
-                height: 10,
-                borderRadius: 1,
-                mb: 0.75,
-                background: `linear-gradient(to right, ${
-                  Array.from({ length: 10 }, (_, i) => getColor(i / 9)).join(", ")
-                })`,
+                height: 10, borderRadius: 1, mb: 0.75,
+                background: `linear-gradient(to right, ${Array.from({ length: 10 }, (_, i) => getColor(i / 9)).join(", ")})`,
               }} />
               <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                 <Typography variant="caption" color="rgba(255,255,255,0.3)" fontSize={10}>Low</Typography>
                 <Typography variant="caption" color="rgba(255,255,255,0.3)" fontSize={10}>High</Typography>
               </Box>
             </Box>
+
+            {/* Mobile: subtle persistent handle */}
+            {isMobile && (
+              <Box
+                onClick={() => setSheetOpen(true)}
+                sx={{
+                  position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)",
+                  zIndex: 1000, bgcolor: "rgba(13,10,26,0.75)", backdropFilter: "blur(8px)",
+                  border: "1px solid rgba(255,45,120,0.25)", borderRadius: 99,
+                  px: 2, py: 0.75, cursor: "pointer",
+                }}
+              >
+                <Typography variant="caption" color="rgba(240,248,255,0.6)" fontSize={12}>
+                  {pendingLocation ? "📍 Pin dropped — tap to share" : "Tap map · share conditions"}
+                </Typography>
+              </Box>
+            )}
           </Box>
         </Box>
 
-        <Box sx={{ height: "100%", flexShrink: 0 }}>
-          <Sidebar
-            onSubmit={setSubmittedCoords}
-            sendReaction={sendReaction}
-            pendingLocation={pendingLocation}
-            isLoggedIn={isLoggedIn}
-          />
+        {/* ── Desktop: Sidebar ── */}
+        {!isMobile && (
+          <Box sx={{ height: "100%", flexShrink: 0 }}>
+            <Sidebar
+              onSubmit={setSubmittedCoords}
+              sendReaction={sendReaction}
+              pendingLocation={pendingLocation}
+              isLoggedIn={isLoggedIn}
+            />
+          </Box>
+        )}
+
+        {/* ── Mobile: Bottom Sheet ── */}
+        {isMobile && (
+          <>
+            {/* Backdrop */}
+            {sheetOpen && (
+              <Box
+                onClick={() => setSheetOpen(false)}
+                sx={{
+                  position: "absolute", inset: 0, zIndex: 1100,
+                  bgcolor: "rgba(0,0,0,0.4)", backdropFilter: "blur(2px)",
+                }}
+              />
+            )}
+
+            {/* Sheet */}
+            <Box sx={{
+              position: "absolute", bottom: 0, left: 0, right: 0,
+              zIndex: 1200,
+              maxHeight: "80vh",
+              bgcolor: "#150E2A",
+              borderTop: "1px solid rgba(255,45,120,0.2)",
+              borderRadius: "20px 20px 0 0",
+              boxShadow: "0 -8px 40px rgba(0,0,0,0.6)",
+              transform: sheetOpen ? "translateY(0)" : "translateY(100%)",
+              transition: "transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}>
+              {/* Drag handle */}
+              <Box sx={{ display: "flex", justifyContent: "center", pt: 1.5, pb: 0.5, flexShrink: 0 }}>
+                <Box sx={{ width: 40, height: 4, borderRadius: 2, bgcolor: "rgba(240,248,255,0.2)" }} />
+              </Box>
+
+              {/* Scrollable Sidebar content */}
+              <Box sx={{ overflowY: "auto", flex: 1 }}>
+                <Sidebar
+                  onSubmit={setSubmittedCoords}
+                  sendReaction={sendReaction}
+                  pendingLocation={pendingLocation}
+                  isLoggedIn={isLoggedIn}
+                />
+              </Box>
+            </Box>
+          </>
+        )}
+      </Box>
+
+      {/* ── Footer (desktop only) ── */}
+      {!isMobile && (
+        <Box sx={{
+          height: FOOTER_H,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 3,
+          borderTop: "1px solid rgba(240,248,255,0.06)",
+          px: 3,
+          flexShrink: 0,
+        }}>
+          <Typography variant="caption" color="rgba(240,248,255,0.25)" fontSize={10} letterSpacing="0.06em">
+            SLAB LAB · Colorado Backcountry Intelligence
+          </Typography>
+          <Typography
+            component="a"
+            href="https://avalanche.state.co.us"
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="caption"
+            sx={{ color: "rgba(240,248,255,0.25)", fontSize: 10, letterSpacing: "0.06em", textDecoration: "none", "&:hover": { color: "#00E5CC" } }}
+          >
+            CAIC Data
+          </Typography>
+          <Typography variant="caption" color="rgba(240,248,255,0.25)" fontSize={10} letterSpacing="0.06em">
+            Not a substitute for official forecasts
+          </Typography>
         </Box>
-      </Box>
-
-      {/* ── Footer ── */}
-      <Box sx={{
-        height: FOOTER_H,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 3,
-        borderTop: "1px solid rgba(240,248,255,0.06)",
-        px: 3,
-        flexShrink: 0,
-      }}>
-        <Typography variant="caption" color="rgba(240,248,255,0.25)" fontSize={10} letterSpacing="0.06em">
-          SLAB LAB · Colorado Backcountry Intelligence
-        </Typography>
-        <Typography
-          component="a"
-          href="https://avalanche.state.co.us"
-          target="_blank"
-          rel="noopener noreferrer"
-          variant="caption"
-          sx={{ color: "rgba(240,248,255,0.25)", fontSize: 10, letterSpacing: "0.06em", textDecoration: "none", "&:hover": { color: "#00E5CC" } }}
-        >
-          CAIC Data
-        </Typography>
-        <Typography variant="caption" color="rgba(240,248,255,0.25)" fontSize={10} letterSpacing="0.06em">
-          Not a substitute for official forecasts
-        </Typography>
-      </Box>
-
+      )}
     </Box>
   );
 }
