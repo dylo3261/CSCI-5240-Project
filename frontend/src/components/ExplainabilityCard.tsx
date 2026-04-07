@@ -451,9 +451,27 @@ useEffect(() => {
             )}
           </>
         ) : error ? (
-          <Typography variant="body2" color="rgba(255,255,255,0.4)" fontSize={12} lineHeight={1.5}>
-            {error}
-          </Typography>
+          <Box
+            sx={{
+              bgcolor: "rgba(244,67,54,0.08)",
+              border: "1px solid rgba(244,67,54,0.2)",
+              borderRadius: 2,
+              p: 2,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              textAlign: "center",
+              gap: 1,
+            }}
+          >
+            <Typography sx={{ fontSize: 24 }}>🚫</Typography>
+            <Typography variant="body2" color="rgba(255,255,255,0.85)" fontWeight={600} fontSize={13}>
+              Prediction Unavailable
+            </Typography>
+            <Typography variant="caption" color="rgba(255,255,255,0.5)" fontSize={11} lineHeight={1.4}>
+              Out of range
+            </Typography>
+          </Box>
         ) : null}
       </Box>
     </Box>
