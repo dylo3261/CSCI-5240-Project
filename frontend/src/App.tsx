@@ -8,7 +8,6 @@ Amplify.configure(awsConfig);
 import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import { AppBar, Toolbar, Typography, Box, Avatar, IconButton, Tooltip, createTheme, ThemeProvider } from "@mui/material";
-import AcUnitIcon from "@mui/icons-material/AcUnit";
 import { fetchUserAttributes } from "aws-amplify/auth";
 import Account from "./pages/Account";
 import Map from "./pages/Map";
