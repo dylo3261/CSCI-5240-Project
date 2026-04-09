@@ -77,16 +77,35 @@ def lambda_handler(event, context):
         # ── Step 4: Predict + SHAP explain ───────────────────────────────
         result = predict_and_explain(terrain, weather)
 
+        # ── Convert units for response (model runs on metric; output is US customary) ──
+        terrain_us = {
+            "elevation": round(terrain["elevation"] * 3.28084, 1),  # m → ft
+            "slope": terrain["slope"],
+            "aspect_degrees": terrain["aspect_degrees"],
+        }
+        weather_us = {
+            "snow_depth": round(weather["snow_depth"] / 2.54, 2) if weather["snow_depth"] is not None else None,   # cm → in
+            "new_snow_24h": round(weather["new_snow_24h"] / 2.54, 2) if weather["new_snow_24h"] is not None else None,  # cm → in
+            "swe": round(weather["swe"] / 2.54, 2) if weather["swe"] is not None else None,                        # cm → in
+            "temp": round(weather["temp"] * 9 / 5 + 32, 1) if weather["temp"] is not None else None,              # °C → °F
+            "snow_ratio": result["features_used"]["snow_ratio"],
+        }
+        stations_us = [
+            {**s, "distance_mi": round(s["distance_km"] * 0.621371, 2)}
+            for s in stations_used
+        ]
+        explanation_us = _convert_explanation_units(result["explanation"])
+
         # ── Response ─────────────────────────────────────────────────────
         return _response(200, {
             "prediction": result["prediction"],
             "risk_level": result["risk_level"],
             "shap_values": result["shap_values"],
             "base_value": result["base_value"],
-            "explanation": result["explanation"],
-            "terrain": terrain,
-            "weather": {**weather, "snow_ratio": result["features_used"]["snow_ratio"]},
-            "stations_used": stations_used,
+            "explanation": explanation_us,
+            "terrain": terrain_us,
+            "weather": weather_us,
+            "stations_used": stations_us,
             "location": {"latitude": lat, "longitude": lon},
         })
 
@@ -97,6 +116,25 @@ def lambda_handler(event, context):
     except Exception as e:
         logger.exception("Prediction failed")
         return _response(500, {"error": str(e)})
+
+
+_FEATURE_UNIT_CONVERTERS = {
+    "elevation": lambda v: round(v * 3.28084, 1),   # m → ft
+    "snow_depth": lambda v: round(v / 2.54, 2),      # cm → in
+    "new_snow_24h": lambda v: round(v / 2.54, 2),    # cm → in
+    "temp": lambda v: round(v * 9 / 5 + 32, 1),      # °C → °F
+}
+
+
+def _convert_explanation_units(explanation: list) -> list:
+    """Convert metric feature values in SHAP explanation entries to US customary."""
+    result = []
+    for item in explanation:
+        item = dict(item)
+        if item["feature"] in _FEATURE_UNIT_CONVERTERS:
+            item["value"] = _FEATURE_UNIT_CONVERTERS[item["feature"]](item["value"])
+        result.append(item)
+    return result
 
 
 def _response(status_code: int, body: dict) -> dict:
