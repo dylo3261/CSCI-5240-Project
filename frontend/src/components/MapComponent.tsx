@@ -80,14 +80,37 @@ function FlyTo({ coords }: { coords: { lat: number; lng: number } | null }) {
   return null;
 }
 
+// Cell-key used for O(1) coverage lookup.
+// Math.round(x / STEP) maps any point within half a step of a cell centre
+// to the same integer, matching how cells are quantised in the data pipeline.
+function cellKey(lat: number, lng: number): string {
+  return `${Math.round(lat / LAT_STEP)},${Math.round(lng / LON_STEP)}`;
+}
+
 function LocationSelector({
   onLocationSelect,
+  coverageSet,
 }: {
   onLocationSelect: (lat: number, lng: number) => void;
+  coverageSet: Set<string>;
 }) {
+  const map = useMap();
+
   useMapEvents({
+    mousemove(e) {
+      const covered =
+        coverageSet.size === 0 // still loading — don't block
+          ? true
+          : coverageSet.has(cellKey(e.latlng.lat, e.latlng.lng));
+      map.getContainer().style.cursor = covered ? "crosshair" : "not-allowed";
+    },
+    mouseout() {
+      map.getContainer().style.cursor = "";
+    },
     click(e) {
-      onLocationSelect(e.latlng.lat, e.latlng.lng);
+      if (coverageSet.size > 0 && coverageSet.has(cellKey(e.latlng.lat, e.latlng.lng))) {
+        onLocationSelect(e.latlng.lat, e.latlng.lng);
+      }
     },
   });
   return null;
@@ -113,6 +136,16 @@ export default function MapComponent({
   useEffect(() => {
     setCardOpen(false);
   }, [pendingLocationKey]);
+
+  // Build a Set of quantised cell keys so LocationSelector can do O(1)
+  // coverage checks on click and mousemove.
+  const coverageSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const cell of cells) {
+      set.add(cellKey(cell.lat, cell.lon));
+    }
+    return set;
+  }, [cells]);
 
   // Render grid cells to an offscreen canvas once cells are loaded.
   // Using floor/ceil for pixel bounds guarantees adjacent cells share edges
@@ -185,7 +218,7 @@ export default function MapComponent({
           attribution='© <a href="https://carto.com/">CARTO</a>'
         />
         <FlyTo coords={coords} />
-        <LocationSelector onLocationSelect={onLocationSelect} />
+        <LocationSelector onLocationSelect={onLocationSelect} coverageSet={coverageSet} />
         {overlayUrl && (
           <ImageOverlay
             url={overlayUrl}
