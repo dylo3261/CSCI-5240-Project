@@ -128,7 +128,7 @@ def predict_and_explain(terrain: dict, weather: dict) -> dict:
     feature_df = pd.DataFrame([features])[feature_cols]
 
     # ── Predict ──────────────────────────────────────────────────────────
-    prob = float(pipeline.predict_proba(feature_df)[0, 1])
+    prob = float(pipeline.predict_proba(feature_df)[0, 1]) * 0.35
     risk_level = _pred_class(prob)
 
     # ── SHAP ─────────────────────────────────────────────────────────────

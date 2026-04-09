@@ -348,7 +348,7 @@ def _predict_single(
                 "lon": round(float(lon), 4),
                 "prediction": 0.0,
                 "risk_level": "LOW",
-                "elevation": round(elevation, 0),
+                "elevation": round(elevation * 3.28084, 0),  # m → ft
             }
 
         snow_depth_idw = inverse_distance_weighting(snow_depths, valid_dists)
@@ -383,7 +383,7 @@ def _predict_single(
         }
 
         feature_df = pd.DataFrame([features])[feature_cols]
-        prob = float(pipeline.predict_proba(feature_df)[0, 1])
+        prob = float(pipeline.predict_proba(feature_df)[0, 1]) * 0.35
 
         if prob >= 0.80:
             risk_level = "Extreme"
@@ -401,7 +401,7 @@ def _predict_single(
             "lon": round(float(lon), 4),
             "prediction": round(prob, 4),
             "risk_level": risk_level,
-            "elevation": round(elevation, 0),
+            "elevation": round(elevation * 3.28084, 0),  # m → ft
         }
 
     except Exception:
