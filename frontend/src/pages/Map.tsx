@@ -58,7 +58,34 @@ export default function Map() {
   const [userId, setUserId] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const dragStartY = useRef(0);
+  const dragOffset = useRef(0);
   const isMobile = useIsMobile();
+
+  function onDragHandleTouchStart(e: React.TouchEvent) {
+    dragStartY.current = e.touches[0].clientY;
+    dragOffset.current = 0;
+    if (sheetRef.current) sheetRef.current.style.transition = "none";
+  }
+
+  function onDragHandleTouchMove(e: React.TouchEvent) {
+    const delta = e.touches[0].clientY - dragStartY.current;
+    if (delta < 0) return;
+    dragOffset.current = delta;
+    if (sheetRef.current) sheetRef.current.style.transform = `translateY(${delta}px)`;
+  }
+
+  function onDragHandleTouchEnd() {
+    if (sheetRef.current) sheetRef.current.style.transition = "";
+    if (dragOffset.current > 80) {
+      if (sheetRef.current) sheetRef.current.style.transform = "";
+      setSheetOpen(false);
+    } else {
+      if (sheetRef.current) sheetRef.current.style.transform = "";
+    }
+    dragOffset.current = 0;
+  }
 
   useEffect(() => {
     fetch(FETCH_REACTIONS_URL)
@@ -239,7 +266,7 @@ export default function Map() {
             )}
 
             {/* Sheet */}
-            <Box sx={{
+            <Box ref={sheetRef} sx={{
               position: "absolute", bottom: 0, left: 0, right: 0,
               zIndex: 1200,
               maxHeight: "80vh",
@@ -253,8 +280,13 @@ export default function Map() {
               flexDirection: "column",
               overflow: "hidden",
             }}>
-              {/* Drag handle */}
-              <Box sx={{ display: "flex", justifyContent: "center", pt: 1.5, pb: 0.5, flexShrink: 0 }}>
+              {/* Drag handle — touch target for swipe-to-close */}
+              <Box
+                onTouchStart={onDragHandleTouchStart}
+                onTouchMove={onDragHandleTouchMove}
+                onTouchEnd={onDragHandleTouchEnd}
+                sx={{ display: "flex", justifyContent: "center", pt: 1.5, pb: 0.5, flexShrink: 0, touchAction: "none" }}
+              >
                 <Box sx={{ width: 40, height: 4, borderRadius: 2, bgcolor: "rgba(240,248,255,0.2)" }} />
               </Box>
 
