@@ -21,7 +21,7 @@ interface ExplainabilityResult {
   riskLevel: "low" | "moderate" | "considerable" | "high" | "extreme";
   terrain: { elevation: number; slope: number; aspect_degrees: number };
   weather: { snow_depth: number; new_snow_24h: number; swe: number; temp: number; snow_ratio: number };
-  stations_used: { station_id: number; station_triplet: string; name: string; distance_km: number }[];
+  stations_used: { station_id: number; station_triplet: string; name: string; distance_km: number; distance_mi?: number }[];
 }
 
 // ── Raw response from explainable-inference Lambda ─────────────────────────
@@ -39,7 +39,7 @@ interface RawInferenceResponse {
   explanation: RawExplanationItem[];
   terrain: { elevation: number; slope: number; aspect_degrees: number };
   weather: { snow_depth: number; new_snow_24h: number; swe: number; temp: number; snow_ratio: number };
-  stations_used: { station_id: number; station_triplet: string; name: string; distance_km: number }[];
+  stations_used: { station_id: number; station_triplet: string; name: string; distance_km: number; distance_mi?: number }[];
   base_value?: number;
 }
 
@@ -56,12 +56,12 @@ const FEATURE_LABEL: Record<string, string> = {
 
 function formatFeatureValue(feature: string, value: number): string {
   switch (feature) {
-    case "elevation":      return `${Math.round(value)} m`;
+    case "elevation":      return `${Math.round(value)} ft`;
     case "slope":          return `${value.toFixed(1)}°`;
     case "aspect_degrees": return `${Math.round(value)}°`;
-    case "snow_depth":     return `${value.toFixed(1)} cm`;
-    case "new_snow_24h":   return `${value.toFixed(1)} cm`;
-    case "temp":           return `${value.toFixed(1)}°C`;
+    case "snow_depth":     return `${value.toFixed(1)} in`;
+    case "new_snow_24h":   return `${value.toFixed(1)} in`;
+    case "temp":           return `${value.toFixed(1)}°F`;
     case "snow_ratio":     return value.toFixed(2);
     default:               return String(value);
   }
@@ -243,14 +243,14 @@ useEffect(() => {
       "",
       "TERRAIN",
       "-------",
-      `  Elevation:  ${Math.round(result.terrain.elevation)} m`,
+      `  Elevation:  ${Math.round(result.terrain.elevation)} ft`,
       `  Slope:      ${result.terrain.slope.toFixed(1)}°`,
       `  Aspect:     ${Math.round(result.terrain.aspect_degrees)}°`,
       "",
       ...(result.stations_used.length > 0 ? [
         "WEATHER STATIONS USED",
         "---------------------",
-        ...result.stations_used.map((s) => `  ${(s.name || s.station_triplet).padEnd(24)} ${s.distance_km.toFixed(1)} km`),
+        ...result.stations_used.map((s) => `  ${(s.name || s.station_triplet).padEnd(24)} ${(s.distance_mi ?? s.distance_km * 0.621371).toFixed(1)} mi`),
         "",
       ] : []),
       "↑ raises risk   ↓ lowers risk",
@@ -428,7 +428,7 @@ useEffect(() => {
               <Collapse in={terrainOpen}>
                 <Box sx={{ pt: 0.5 }}>
                   {[
-                    { label: "Elevation", value: `${Math.round(result.terrain.elevation)} m` },
+                    { label: "Elevation", value: `${Math.round(result.terrain.elevation)} ft` },
                     { label: "Slope",     value: `${result.terrain.slope.toFixed(1)}°` },
                     { label: "Aspect",    value: `${Math.round(result.terrain.aspect_degrees)}°` },
                   ].map(({ label, value }) => (
@@ -457,7 +457,7 @@ useEffect(() => {
                           {s.name || s.station_triplet}
                         </Typography>
                         <Typography variant="caption" color="rgba(255,255,255,0.3)" fontSize={11} fontFamily="monospace">
-                          {s.distance_km.toFixed(1)} km
+                          {(s.distance_mi ?? s.distance_km * 0.621371).toFixed(1)} mi
                         </Typography>
                       </Box>
                     ))}
